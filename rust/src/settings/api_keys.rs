@@ -150,4 +150,3 @@ pub fn get_api_key_providers() -> Vec<ProviderConfigInfo> {
         dashboard_url: Some("https://github.com/settings/copilot"),
     }]
 }
-

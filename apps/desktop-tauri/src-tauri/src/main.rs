@@ -19,6 +19,7 @@ mod window_positioner;
 
 use std::sync::Mutex;
 
+use bar::state::{BarCommand, BarRuntimeState, BarState};
 use state::AppState;
 use surface::SurfaceMode;
 use surface_target::SurfaceTarget;
@@ -58,8 +59,14 @@ fn main() {
     let mut initial_state = AppState::new();
     initial_state.proof_config = proof_config;
 
+    let (bar_lifecycle_tx, _) =
+        tokio::sync::broadcast::channel::<bar::lifecycle_event::TimestampedEvent>(256);
+    let (bar_command_tx, bar_command_rx) = tokio::sync::mpsc::channel::<BarCommand>(32);
+    let bar_runtime = BarRuntimeState::new(bar_command_tx, bar_lifecycle_tx, BarState::Visible);
+
     tauri::Builder::default()
         .manage(Mutex::new(initial_state))
+        .manage(bar_runtime)
         .plugin(shortcut_bridge::plugin())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             if args.len() <= 1 || should_open_tray_panel_from_args(args.iter().skip(1)) {
@@ -152,9 +159,22 @@ fn main() {
                 shell::dwm::force_dark_caption(&window);
                 window.hide()?;
             }
+
+            let bar_runtime = app.state::<BarRuntimeState>().inner().clone();
+            bar::state::spawn_actor(app.handle().clone(), bar_runtime.clone(), bar_command_rx);
+            bar::logger::spawn(bar_runtime.clone());
+            bar::watchdog::spawn(app.handle().clone(), bar_runtime.clone());
+
             tray_bridge::setup(app)?;
             shortcut_bridge::register(app.handle());
-            floatbar::install(app.handle());
+
+            let persisted = codexbar::settings::Settings::load();
+            let startup_command = if persisted.float_bar_enabled {
+                BarCommand::Show
+            } else {
+                BarCommand::Hide
+            };
+            let _ = bar_runtime.try_send(startup_command);
 
             // In proof mode, show the target surface after a brief delay
             // so WebView2 has time to initialize.

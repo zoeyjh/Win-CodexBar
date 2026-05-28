@@ -3,9 +3,10 @@
 //! Tauri window labeled `floatbar`, independent of the main surface
 //! state machine.
 
+use chrono::Utc;
 use tauri::{LogicalPosition, LogicalSize, Manager, WebviewUrl};
 
-use crate::geometry_store;
+use crate::bar::window_state::{WindowRect, WindowState};
 
 pub const FLOATBAR_LABEL: &str = "floatbar";
 pub const FLOAT_BAR_CONFIG_CHANGED_EVENT: &str = "float-bar-config-changed";
@@ -33,10 +34,14 @@ pub fn opacity_to_alpha(opacity: u8) -> u8 {
     ((clamped as u32) * 255 / 100) as u8
 }
 
+fn saved_window_state() -> WindowState {
+    WindowState::load(&crate::bar::window_state_path())
+}
+
 /// Open the floating-bar window, or focus + reapply attributes if already
-/// open. Position is restored from the geometry store keyed by
-/// `floatbar`; on first launch the window is centered horizontally near
-/// the top of the primary monitor.
+/// open. Position is restored from `~/.codexbar-zoey/window.json`; on first
+/// launch the window is centered horizontally near the top of the primary
+/// monitor.
 pub fn show(
     app: &tauri::AppHandle,
     opacity: u8,
@@ -80,11 +85,18 @@ pub fn show(
         .map_err(|e| e.to_string())?;
 
     // Restore prior geometry if we have one; otherwise center top.
-    if let Some(g) = geometry_store::load_entry(FLOATBAR_LABEL) {
-        let _ = win.set_position(LogicalPosition::new(g.x as f64, g.y as f64));
-        if let (Some(w), Some(h)) = (g.width, g.height) {
-            let _ = win.set_size(LogicalSize::new(w as f64, h as f64));
+    let mut saved = saved_window_state();
+    if saved.saved_at.timestamp() != 0 || saved.coord_space == "logical" {
+        if let Ok(monitors) = win.available_monitors()
+            && let Some(monitor) = monitors.first()
+        {
+            let pos = monitor.position();
+            let size = monitor.size();
+            saved.clamp_to_work_area((pos.x, pos.y, size.width, size.height));
         }
+
+        let _ = win.set_position(LogicalPosition::new(saved.rect.x as f64, saved.rect.y as f64));
+        let _ = win.set_size(LogicalSize::new(saved.rect.w as f64, saved.rect.h as f64));
     } else if let Ok(Some(monitor)) = win.primary_monitor() {
         let scale = win.scale_factor().unwrap_or(1.0);
         let mon_w = monitor.size().width as f64 / scale;
@@ -111,7 +123,7 @@ pub fn hide(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Capture current position into the geometry store under the floatbar key.
+/// Capture current position into `~/.codexbar-zoey/window.json`.
 ///
 /// Accepts any Tauri window handle (`Window` from event callbacks or
 /// `WebviewWindow` from `get_webview_window`), since `WindowEvent`
@@ -125,15 +137,20 @@ pub fn remember_geometry<R: tauri::Runtime, M: WindowGeometry<R>>(window: &M) {
         return;
     };
     let scale = window.scale_factor().unwrap_or(1.0);
-    geometry_store::save_entry(
-        FLOATBAR_LABEL,
-        geometry_store::StoredGeometry {
+    let monitor_id = window.current_monitor_name();
+    let state = WindowState {
+        rect: WindowRect {
             x: (pos.x as f64 / scale).round() as i32,
             y: (pos.y as f64 / scale).round() as i32,
-            width: Some((size.width as f64 / scale).round() as u32),
-            height: Some((size.height as f64 / scale).round() as u32),
+            w: (size.width as f64 / scale).round() as u32,
+            h: (size.height as f64 / scale).round() as u32,
         },
-    );
+        monitor_id,
+        dpi: Some(scale),
+        saved_at: Utc::now(),
+        coord_space: "logical".into(),
+    };
+    let _ = state.save(&crate::bar::window_state_path());
 }
 
 /// Subset of `tauri::WebviewWindow` / `tauri::Window` used by
@@ -145,6 +162,7 @@ pub trait WindowGeometry<R: tauri::Runtime> {
     fn outer_position(&self) -> tauri::Result<tauri::PhysicalPosition<i32>>;
     fn outer_size(&self) -> tauri::Result<tauri::PhysicalSize<u32>>;
     fn scale_factor(&self) -> tauri::Result<f64>;
+    fn current_monitor_name(&self) -> Option<String>;
 }
 
 impl<R: tauri::Runtime> WindowGeometry<R> for tauri::WebviewWindow<R> {
@@ -157,6 +175,12 @@ impl<R: tauri::Runtime> WindowGeometry<R> for tauri::WebviewWindow<R> {
     fn scale_factor(&self) -> tauri::Result<f64> {
         tauri::WebviewWindow::scale_factor(self)
     }
+    fn current_monitor_name(&self) -> Option<String> {
+        self.current_monitor()
+            .ok()
+            .flatten()
+            .and_then(|monitor| monitor.name().cloned())
+    }
 }
 
 impl<R: tauri::Runtime> WindowGeometry<R> for tauri::Window<R> {
@@ -168,6 +192,12 @@ impl<R: tauri::Runtime> WindowGeometry<R> for tauri::Window<R> {
     }
     fn scale_factor(&self) -> tauri::Result<f64> {
         tauri::Window::scale_factor(self)
+    }
+    fn current_monitor_name(&self) -> Option<String> {
+        self.current_monitor()
+            .ok()
+            .flatten()
+            .and_then(|monitor| monitor.name().cloned())
     }
 }
 

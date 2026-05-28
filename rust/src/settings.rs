@@ -268,7 +268,11 @@ impl Default for Settings {
             hide_personal_info: false, // Show personal info by default
             update_channel: UpdateChannel::default(), // Stable by default
             provider_metrics: HashMap::new(), // Empty = use Automatic for all
-            provider_order: vec!["claude".to_string(), "codex".to_string(), "copilot".to_string()],
+            provider_order: vec![
+                "claude".to_string(),
+                "codex".to_string(),
+                "copilot".to_string(),
+            ],
             global_shortcut: default_global_shortcut(), // Ctrl+Shift+U by default
             auto_download_updates: false, // Require explicit opt-in for background downloads
             install_updates_on_quit: false, // Don't auto-install on quit by default

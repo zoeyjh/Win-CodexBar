@@ -450,7 +450,6 @@ mod tests {
         assert!(TokenAccountSupport::is_supported(ProviderId::Claude));
         assert!(!TokenAccountSupport::is_supported(ProviderId::Codex));
         assert!(TokenAccountSupport::is_supported(ProviderId::Copilot));
-
     }
 
     #[test]

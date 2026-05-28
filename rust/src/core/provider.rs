@@ -237,7 +237,10 @@ mod tests {
     fn test_provider_id_all() {
         let all = ProviderId::all();
         assert_eq!(all.len(), 3);
-        assert_eq!(all, &[ProviderId::Codex, ProviderId::Claude, ProviderId::Copilot]);
+        assert_eq!(
+            all,
+            &[ProviderId::Codex, ProviderId::Claude, ProviderId::Copilot]
+        );
     }
 
     #[test]
@@ -256,13 +259,28 @@ mod tests {
 
     #[test]
     fn test_provider_id_from_cli_name() {
-        assert_eq!(ProviderId::from_cli_name("claude"), Some(ProviderId::Claude));
-        assert_eq!(ProviderId::from_cli_name("anthropic"), Some(ProviderId::Claude));
-        assert_eq!(ProviderId::from_cli_name("CLAUDE"), Some(ProviderId::Claude));
+        assert_eq!(
+            ProviderId::from_cli_name("claude"),
+            Some(ProviderId::Claude)
+        );
+        assert_eq!(
+            ProviderId::from_cli_name("anthropic"),
+            Some(ProviderId::Claude)
+        );
+        assert_eq!(
+            ProviderId::from_cli_name("CLAUDE"),
+            Some(ProviderId::Claude)
+        );
         assert_eq!(ProviderId::from_cli_name("codex"), Some(ProviderId::Codex));
         assert_eq!(ProviderId::from_cli_name("openai"), Some(ProviderId::Codex));
-        assert_eq!(ProviderId::from_cli_name("copilot"), Some(ProviderId::Copilot));
-        assert_eq!(ProviderId::from_cli_name("github"), Some(ProviderId::Copilot));
+        assert_eq!(
+            ProviderId::from_cli_name("copilot"),
+            Some(ProviderId::Copilot)
+        );
+        assert_eq!(
+            ProviderId::from_cli_name("github"),
+            Some(ProviderId::Copilot)
+        );
         assert_eq!(ProviderId::from_cli_name("unknown"), None);
     }
 

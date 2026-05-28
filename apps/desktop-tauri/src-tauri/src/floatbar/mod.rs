@@ -6,7 +6,7 @@
 //! shell only needs to call into the small public API exported here.
 
 mod commands;
-mod window;
+pub(crate) mod window;
 
 pub use commands::*;
 pub use window::FLOAT_BAR_CONFIG_CHANGED_EVENT;
@@ -14,6 +14,21 @@ pub use window::FLOATBAR_LABEL;
 
 use codexbar::settings::Settings;
 use tauri::{Emitter, Manager};
+
+use crate::bar::state::{BarCommand, BarRuntimeState};
+
+pub(crate) fn show_bar_window(
+    app: &tauri::AppHandle,
+    opacity: u8,
+    orientation: &str,
+    click_through: bool,
+) -> Result<(), String> {
+    window::show(app, opacity, orientation, click_through)
+}
+
+pub(crate) fn hide_bar_window(app: &tauri::AppHandle) -> Result<(), String> {
+    window::hide(app)
+}
 
 /// Reopen the floating bar on app start if it was enabled previously.
 ///
@@ -43,18 +58,33 @@ pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) -
         | tauri::WindowEvent::CloseRequested { .. } => {
             window::remember_geometry(window);
         }
+        tauri::WindowEvent::Focused(focused) => {
+            if let Some(runtime) = window.app_handle().try_state::<BarRuntimeState>() {
+                runtime.emit(crate::bar::lifecycle_event::LifecycleEvent::FocusChanged {
+                    focused: *focused,
+                });
+            }
+        }
         _ => {}
     }
     true
 }
 
 /// Toggle the floating bar from the tray menu. Persists the new state
-/// and shows or hides the window accordingly.
+/// and routes the actual window work through the bar actor.
 pub fn toggle(app: &tauri::AppHandle) {
     let mut settings = Settings::load();
     settings.float_bar_enabled = !settings.float_bar_enabled;
     let _ = settings.save();
-    if settings.float_bar_enabled {
+
+    if let Some(runtime) = app.try_state::<BarRuntimeState>() {
+        let command = if settings.float_bar_enabled {
+            BarCommand::Show
+        } else {
+            BarCommand::Hide
+        };
+        let _ = runtime.try_send(command);
+    } else if settings.float_bar_enabled {
         let _ = window::show(
             app,
             settings.float_bar_opacity,
@@ -72,14 +102,22 @@ pub fn toggle(app: &tauri::AppHandle) {
 pub fn apply_state(app: &tauri::AppHandle, settings: &Settings) {
     let open = app.get_webview_window(FLOATBAR_LABEL).is_some();
     if settings.float_bar_enabled && !open {
-        let _ = window::show(
-            app,
-            settings.float_bar_opacity,
-            &settings.float_bar_orientation,
-            settings.float_bar_click_through,
-        );
+        if let Some(runtime) = app.try_state::<BarRuntimeState>() {
+            let _ = runtime.try_send(BarCommand::Show);
+        } else {
+            let _ = window::show(
+                app,
+                settings.float_bar_opacity,
+                &settings.float_bar_orientation,
+                settings.float_bar_click_through,
+            );
+        }
     } else if !settings.float_bar_enabled && open {
-        let _ = window::hide(app);
+        if let Some(runtime) = app.try_state::<BarRuntimeState>() {
+            let _ = runtime.try_send(BarCommand::Hide);
+        } else {
+            let _ = window::hide(app);
+        }
     } else if let Some(w) = app.get_webview_window(FLOATBAR_LABEL) {
         window::apply_opacity(&w, settings.float_bar_opacity);
         window::apply_click_through(&w, settings.float_bar_click_through);

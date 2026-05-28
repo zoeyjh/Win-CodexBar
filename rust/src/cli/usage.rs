@@ -9,7 +9,8 @@ use crate::core::{
 };
 use crate::status::{ProviderStatus as StatusInfo, StatusLevel, fetch_provider_status};
 
-pub const PROVIDER_ARG_HELP: &str = "Provider to query (for example: codex, claude, copilot, all, both)";
+pub const PROVIDER_ARG_HELP: &str =
+    "Provider to query (for example: codex, claude, copilot, all, both)";
 
 /// Arguments for the usage command
 #[derive(Args, Debug, Default)]

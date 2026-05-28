@@ -69,7 +69,6 @@ pub fn items_to_migrate() -> Vec<MigrationItem> {
     ]
 }
 
-
 /// Credential migration errors
 #[derive(Debug, thiserror::Error)]
 pub enum MigrationError {

@@ -444,7 +444,7 @@ fn transition_about_path(app: &AppHandle) -> Result<(), String> {
 }
 
 fn persist_about_path_snapshot(result: Result<(), String>) -> Result<(), String> {
-    persist_about_path_snapshot_for_item("about", result)
+    persist_about_path_snapshot_for_item("toggle_detail", result)
 }
 
 fn persist_about_path_snapshot_for_item(
@@ -542,7 +542,12 @@ fn current_proof_state_override() -> Option<ProofStateOverride> {
 fn native_menu_snapshot_for_path(menu_path: &str) -> (String, Vec<String>) {
     let providers = get_provider_catalog();
     let enabled = codexbar::settings::Settings::load().enabled_providers;
-    let entries = tray_menu::build_tray_menu(&providers, &[], &enabled);
+    let entries = tray_menu::build_tray_menu(
+        &providers,
+        &[],
+        &enabled,
+        crate::bar::state::BarState::Visible,
+    );
     let menu_items = tray_menu::proof_menu_items(&entries, menu_path).unwrap_or_default();
     (menu_path.to_string(), menu_items)
 }
@@ -550,7 +555,12 @@ fn native_menu_snapshot_for_path(menu_path: &str) -> (String, Vec<String>) {
 fn native_menu_context_for_item(item_id: &str) -> Result<(String, Vec<String>), String> {
     let providers = get_provider_catalog();
     let enabled = codexbar::settings::Settings::load().enabled_providers;
-    let entries = tray_menu::build_tray_menu(&providers, &[], &enabled);
+    let entries = tray_menu::build_tray_menu(
+        &providers,
+        &[],
+        &enabled,
+        crate::bar::state::BarState::Visible,
+    );
     tray_menu::proof_menu_context_for_item(&entries, item_id)
         .ok_or_else(|| format!("proof menu context missing tray item: {item_id}"))
 }
@@ -788,7 +798,7 @@ mod tests {
         assert!(result.is_ok());
         let snapshot = menu_snapshot();
         assert_eq!(snapshot.menu_path.as_deref(), Some("tray"));
-        assert!(snapshot.menu_items.iter().any(|item| item == "About"));
+        assert!(snapshot.menu_items.iter().any(|item| item == "Detail 열기"));
     }
 
     #[test]

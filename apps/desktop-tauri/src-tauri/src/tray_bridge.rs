@@ -2,6 +2,7 @@
 
 use std::sync::Mutex;
 
+use crate::bar::state::{BarCommand, BarRuntimeState, BarState};
 use crate::commands::ProviderCatalogEntry;
 use codexbar::core::ProviderId;
 use codexbar::settings::{MetricPreference, Settings};
@@ -10,12 +11,8 @@ use tauri::menu::{CheckMenuItemBuilder, IsMenuItem, Menu, MenuItem, PredefinedMe
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager};
 
-use codexbar::tray::render_bar_icon_rgba;
-
 use crate::shell;
 use crate::state::{AppState, TrayAnchor};
-use crate::surface::SurfaceMode;
-use crate::surface_target::SurfaceTarget;
 #[cfg(test)]
 use crate::tray_menu::build_tray_menu;
 use crate::tray_menu::{TrayMenuEntry, build_tray_menu_with};
@@ -121,6 +118,12 @@ fn resolve_tray_anchor(
     }
 }
 
+fn current_bar_state(app: &AppHandle) -> BarState {
+    app.try_state::<BarRuntimeState>()
+        .map(|runtime| runtime.current())
+        .unwrap_or(BarState::Visible)
+}
+
 fn build_native_tray_menu(
     app: &AppHandle,
     providers: &[ProviderCatalogEntry],
@@ -133,6 +136,7 @@ fn build_native_tray_menu(
         status_labels,
         &enabled,
         settings.float_bar_enabled,
+        current_bar_state(app),
     );
     let entries = spec
         .iter()
@@ -146,73 +150,20 @@ fn build_native_tray_menu(
     Menu::with_items(app, &item_refs)
 }
 
-fn resolve_menu_target(id: &str) -> Option<shell::ShellTransitionRequest> {
-    match id {
-        "show_panel" => Some(shell::ShellTransitionRequest {
-            mode: SurfaceMode::TrayPanel,
-            target: SurfaceTarget::Summary,
-            position: None,
-        }),
-        "pop_out" => Some(shell::ShellTransitionRequest {
-            mode: SurfaceMode::PopOut,
-            target: SurfaceTarget::Dashboard,
-            position: None,
-        }),
-        _ if id.starts_with("provider:") => Some(shell::ShellTransitionRequest {
-            mode: SurfaceMode::PopOut,
-            target: SurfaceTarget::parse(id)?,
-            position: None,
-        }),
-        _ => None,
-    }
-}
-
 enum MenuAction {
-    Transition(shell::ShellTransitionRequest),
-    /// Open Settings/About in a detached window.
-    OpenSettings(String),
-    Refresh,
-    CheckForUpdates,
-    /// Toggle the enabled/disabled state of the provider with the given CLI name.
-    ToggleProvider(String),
-    /// Toggle the floating bar window on/off.
-    ToggleFloatBar,
+    ToggleDetail,
+    ToggleBarVisibility,
+    WatchdogRetry,
     Quit,
-}
-
-enum MenuTransitionDispatch {
-    Transition(shell::ShellTransitionRequest),
-    Reopen(shell::ShellTransitionRequest),
 }
 
 fn resolve_menu_action(id: &str) -> Option<MenuAction> {
     match id {
-        "refresh" => Some(MenuAction::Refresh),
-        "check_for_updates" => Some(MenuAction::CheckForUpdates),
+        "toggle_detail" => Some(MenuAction::ToggleDetail),
+        "toggle_bar_visibility" => Some(MenuAction::ToggleBarVisibility),
+        "watchdog_retry" => Some(MenuAction::WatchdogRetry),
         "quit" => Some(MenuAction::Quit),
-        "settings" => Some(MenuAction::OpenSettings("general".into())),
-        "about" => Some(MenuAction::OpenSettings("about".into())),
-        "toggle_float_bar" => Some(MenuAction::ToggleFloatBar),
-        _ if id.starts_with("toggle_provider:") => {
-            let provider_id = id["toggle_provider:".len()..].to_string();
-            Some(MenuAction::ToggleProvider(provider_id))
-        }
-        _ => resolve_menu_target(id).map(MenuAction::Transition),
-    }
-}
-
-fn resolve_menu_transition_dispatch(
-    id: &str,
-    request: shell::ShellTransitionRequest,
-) -> MenuTransitionDispatch {
-    if id == "show_panel" {
-        MenuTransitionDispatch::Reopen(shell::ShellTransitionRequest {
-            mode: request.mode,
-            target: request.target,
-            position: None,
-        })
-    } else {
-        MenuTransitionDispatch::Transition(request)
+        _ => None,
     }
 }
 
@@ -280,62 +231,41 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 /// Route a native menu-item click to the corresponding shell action.
 fn handle_menu_event(app: &AppHandle, id: &str) {
     match resolve_menu_action(id) {
-        Some(MenuAction::Transition(request)) => {
-            match resolve_menu_transition_dispatch(id, request) {
-                // Pass None so default_surface_position resolves the full chain:
-                // tray_panel_position → inferred_tray_panel_position → shortcut_panel_position.
-                // This mirrors the CODEXBAR_START_VISIBLE path and ensures the panel
-                // opens near the taskbar tray corner even without a prior anchor click.
-                MenuTransitionDispatch::Reopen(request) => {
-                    let _ = shell::reopen_to_target(
-                        app,
-                        request.mode,
-                        request.target,
-                        request.position,
-                    );
-                }
-                MenuTransitionDispatch::Transition(request) => {
-                    let _ = shell::transition_to_target(
-                        app,
-                        request.mode,
-                        request.target,
-                        request.position,
-                    );
-                }
-            }
+        Some(MenuAction::ToggleDetail) => {
+            let position = shell::tray_panel_position(app);
+            shell::toggle_tray_panel(app, position);
         }
-        Some(MenuAction::OpenSettings(tab)) => {
-            let _ = shell::settings_window::open_or_focus(app, &tab);
-        }
-        Some(MenuAction::Refresh) => {
-            let handle = app.clone();
-            tauri::async_runtime::spawn(async move {
-                let _ = crate::commands::do_refresh_providers(&handle).await;
-            });
-        }
-        Some(MenuAction::CheckForUpdates) => {
-            let handle = app.clone();
-            tauri::async_runtime::spawn(async move {
-                let state = handle.state::<Mutex<AppState>>();
-                let _ = crate::commands::check_for_updates(handle.clone(), state).await;
-            });
-        }
-        Some(MenuAction::ToggleProvider(provider_id)) => {
+        Some(MenuAction::ToggleBarVisibility) => {
+            let Some(runtime) = app.try_state::<BarRuntimeState>() else {
+                return;
+            };
             let mut settings = Settings::load();
-            if settings.enabled_providers.contains(&provider_id) {
-                settings.enabled_providers.remove(&provider_id);
-            } else {
-                settings.enabled_providers.insert(provider_id);
-            }
+            let command = match runtime.current() {
+                BarState::Visible | BarState::Recovering => {
+                    settings.float_bar_enabled = false;
+                    BarCommand::Hide
+                }
+                BarState::IntentionallyHidden => {
+                    settings.float_bar_enabled = true;
+                    BarCommand::Show
+                }
+                BarState::Paused | BarState::Quitting => return,
+            };
             let _ = settings.save();
-            crate::floatbar::notify_settings_changed(app);
-            rebuild_tray_menu(app);
+            let _ = runtime.try_send(command);
         }
-        Some(MenuAction::ToggleFloatBar) => {
-            crate::floatbar::toggle(app);
-            rebuild_tray_menu(app);
+        Some(MenuAction::WatchdogRetry) => {
+            let Some(runtime) = app.try_state::<BarRuntimeState>() else {
+                return;
+            };
+            if runtime.current() == BarState::Paused {
+                let _ = runtime.try_send(BarCommand::Retry);
+            }
         }
         Some(MenuAction::Quit) => {
+            if let Some(runtime) = app.try_state::<BarRuntimeState>() {
+                let _ = runtime.try_send(BarCommand::Quit);
+            }
             app.exit(0);
         }
         None => {}
@@ -400,17 +330,9 @@ pub fn update_tray_status_items(
     }
 }
 
-/// Update the tray icon pixels and tooltip text to reflect current provider usage.
+/// Update the tray tooltip text to reflect current provider usage.
 ///
-/// Behaviour mirrors egui's `choose_tray_update_plan` (rust/src/native_ui/app.rs):
-/// - If `menu_bar_shows_highest_usage` is on OR `menu_bar_display_mode == "minimal"`,
-///   render the bar from the healthy provider with the highest session usage.
-/// - Otherwise render from the first enabled healthy provider (catalog order).
-/// - When any provider exposes a weekly/secondary window, the icon shows both
-///   bars from the same picked provider.
-/// - With zero healthy providers but at least one error, fall back to an
-///   error-styled icon using the last known max percentage so the tray
-///   still communicates "something is wrong".
+/// Phase 3 intentionally keeps a static logo icon; only the tooltip is refreshed.
 pub fn update_tray_icon_and_tooltip(
     app: &AppHandle,
     snapshots: &[crate::commands::ProviderUsageSnapshot],
@@ -419,32 +341,6 @@ pub fn update_tray_icon_and_tooltip(
         return;
     };
 
-    // ── Icon ─────────────────────────────────────────────────────────────
-    let ok_snapshots: Vec<_> = snapshots.iter().filter(|s| s.error.is_none()).collect();
-    let all_error = ok_snapshots.is_empty() && !snapshots.is_empty();
-
-    let settings = Settings::load();
-    let prefer_highest = settings.menu_bar_shows_highest_usage
-        || settings.menu_bar_display_mode.as_str() == "minimal";
-
-    let picked = pick_tray_provider(&ok_snapshots, prefer_highest);
-
-    let (session_pct, weekly_pct) = match picked {
-        Some(s) => selected_tray_percents(s, &settings),
-        None => (
-            ok_snapshots
-                .iter()
-                .map(|s| selected_tray_percents(s, &settings).0)
-                .fold(0.0_f64, f64::max),
-            None,
-        ),
-    };
-
-    let (rgba, w, h) = render_bar_icon_rgba(session_pct, weekly_pct, all_error);
-    let icon = Image::new_owned(rgba, w, h);
-    let _ = tray.set_icon(Some(icon));
-
-    // ── Tooltip ───────────────────────────────────────────────────────────
     let tooltip = build_tooltip(snapshots);
     let _ = tray.set_tooltip(Some(tooltip));
 }
@@ -683,96 +579,35 @@ mod tests {
     }
 
     #[test]
-    fn tray_menu_includes_about_and_provider_entries() {
+    fn tray_menu_includes_phase_three_entries() {
         let menu = build_tray_menu(
             &sample_provider_catalog(),
             &[],
             &["codex".to_string(), "claude".to_string()]
                 .into_iter()
                 .collect(),
+            BarState::Visible,
         );
-        assert!(menu_contains(&menu, "about"));
-        assert!(menu_contains(&menu, "toggle_provider:codex"));
+        assert!(menu_contains(&menu, "toggle_detail"));
+        assert!(menu_contains(&menu, "toggle_bar_visibility"));
+        assert!(menu_contains(&menu, "watchdog_retry"));
         assert!(menu_contains(&menu, "quit"));
     }
 
     #[test]
-    fn toggle_float_bar_routes_to_toggle_action() {
-        let action = resolve_menu_action("toggle_float_bar").expect("float bar action");
-        assert!(matches!(action, MenuAction::ToggleFloatBar));
-    }
-
-    #[test]
-    fn settings_menu_routes_to_open_settings_action() {
-        let action = resolve_menu_action("about").expect("about action");
-        match action {
-            MenuAction::OpenSettings(tab) => assert_eq!(tab, "about"),
-            _ => panic!("expected OpenSettings for 'about'"),
-        }
-
-        let action = resolve_menu_action("settings").expect("settings action");
-        match action {
-            MenuAction::OpenSettings(tab) => assert_eq!(tab, "general"),
-            _ => panic!("expected OpenSettings for 'settings'"),
-        }
-    }
-
-    #[test]
-    fn provider_menu_routes_to_provider_popout_target() {
-        let action = resolve_menu_target("provider:codex").expect("provider target");
-        assert_eq!(action.mode, SurfaceMode::PopOut);
-        assert_eq!(
-            action.target,
-            SurfaceTarget::Provider {
-                provider_id: "codex".into()
-            }
-        );
-    }
-
-    #[test]
-    fn show_panel_menu_reopens_with_default_position_chain() {
-        let dispatch = resolve_menu_transition_dispatch(
-            "show_panel",
-            shell::ShellTransitionRequest {
-                mode: SurfaceMode::TrayPanel,
-                target: SurfaceTarget::Summary,
-                position: Some((320, 240)),
-            },
-        );
-
-        match dispatch {
-            MenuTransitionDispatch::Reopen(request) => {
-                assert_eq!(request.mode, SurfaceMode::TrayPanel);
-                assert_eq!(request.target, SurfaceTarget::Summary);
-                assert_eq!(request.position, None);
-            }
-            MenuTransitionDispatch::Transition(_) => {
-                panic!("show_panel should reopen via default tray positioning")
-            }
-        }
-    }
-
-    #[test]
-    fn non_show_panel_menu_keeps_explicit_position() {
-        let dispatch = resolve_menu_transition_dispatch(
-            "pop_out",
-            shell::ShellTransitionRequest {
-                mode: SurfaceMode::PopOut,
-                target: SurfaceTarget::Dashboard,
-                position: Some((320, 240)),
-            },
-        );
-
-        match dispatch {
-            MenuTransitionDispatch::Transition(request) => {
-                assert_eq!(request.mode, SurfaceMode::PopOut);
-                assert_eq!(request.target, SurfaceTarget::Dashboard);
-                assert_eq!(request.position, Some((320, 240)));
-            }
-            MenuTransitionDispatch::Reopen(_) => {
-                panic!("non-show-panel actions should use direct transitions")
-            }
-        }
+    fn simplified_menu_actions_resolve() {
+        assert!(matches!(
+            resolve_menu_action("toggle_detail"),
+            Some(MenuAction::ToggleDetail)
+        ));
+        assert!(matches!(
+            resolve_menu_action("toggle_bar_visibility"),
+            Some(MenuAction::ToggleBarVisibility)
+        ));
+        assert!(matches!(
+            resolve_menu_action("watchdog_retry"),
+            Some(MenuAction::WatchdogRetry)
+        ));
     }
 
     #[test]
