@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { UsageProvider, UsageSnapshot } from "../types/usage";
+import type { TooltipDirection } from "./FloatBar";
 
 const PROVIDER_COLORS: Record<UsageProvider, string> = {
   claude: "#C97A3E",
@@ -39,9 +40,11 @@ function formatResetTime(resetAt: string | null): string {
 export default function ProviderPill({
   provider,
   snapshot,
+  tooltipDirection = "below",
 }: {
   provider: UsageProvider;
   snapshot: UsageSnapshot | null;
+  tooltipDirection?: TooltipDirection;
 }) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const hoverTimerRef = useRef<number | null>(null);
@@ -55,16 +58,16 @@ export default function ProviderPill({
   }, []);
 
   const pillClassName = useMemo(() => {
-    if (snapshot?.status === "auth_expired") {
+    if (!snapshot || snapshot.status === "auth_expired") {
       return "floatbar__pill floatbar__pill--dim";
     }
 
-    if (snapshot?.status === "rate_limited") {
+    if (snapshot.status === "rate_limited") {
       return "floatbar__pill floatbar__pill--warn";
     }
 
     return "floatbar__pill";
-  }, [snapshot?.status]);
+  }, [snapshot]);
 
   const providerName = formatProviderName(provider);
   const percentage = formatPercent(snapshot);
@@ -88,6 +91,8 @@ export default function ProviderPill({
     setTooltipOpen(false);
   };
 
+  const tooltipClass = `floatbar__tooltip floatbar__tooltip--${tooltipDirection}`;
+
   return (
     <div
       className={pillClassName}
@@ -108,7 +113,7 @@ export default function ProviderPill({
       </svg>
       <span className="floatbar__percent">{percentage}</span>
       {tooltipOpen ? (
-        <div className="floatbar__tooltip" role="tooltip">
+        <div className={tooltipClass} role="tooltip">
           <div className="floatbar__tooltip-title">{providerName}</div>
           {snapshot?.plan ? <div className="floatbar__tooltip-line">{snapshot.plan}</div> : null}
           <div className="floatbar__tooltip-line">{tooltipReset}</div>
