@@ -129,6 +129,9 @@ fn bootstrap_contract_lists_phase4_commands() {
         "trigger_provider_login",
         "revoke_provider_credentials",
         "get_credential_storage_status",
+        "toggle_detail",
+        "get_usage_history",
+        "get_provider_sessions",
     ] {
         assert!(ids.contains(&expected), "missing command id: {expected}");
     }

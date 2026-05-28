@@ -30,6 +30,7 @@ import type {
   CredentialStorageStatus,
   WorkAreaRect,
 } from "../types/bridge";
+import type { SessionLogEntry, UsageHistoryPoint, UsageProvider } from "../types/usage";
 
 export function getBootstrapState(): Promise<BootstrapState> {
   return invoke<BootstrapState>("get_bootstrap_state");
@@ -205,6 +206,14 @@ export function getProviderChartData(
   accountEmail?: string,
 ): Promise<ProviderChartData> {
   return invoke<ProviderChartData>("get_provider_chart_data", { providerId, accountEmail });
+}
+
+export function getUsageHistory(providerId: UsageProvider): Promise<UsageHistoryPoint[]> {
+  return invoke<UsageHistoryPoint[]>("get_usage_history", { providerId });
+}
+
+export function getProviderSessions(providerId: UsageProvider): Promise<SessionLogEntry[]> {
+  return invoke<SessionLogEntry[]>("get_provider_sessions", { providerId });
 }
 
 // ── Token account bridge ─────────────────────────────────────────────

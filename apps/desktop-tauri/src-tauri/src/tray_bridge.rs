@@ -233,7 +233,7 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
     match resolve_menu_action(id) {
         Some(MenuAction::ToggleDetail) => {
             let position = shell::tray_panel_position(app);
-            shell::toggle_tray_panel(app, position);
+            let _ = shell::toggle_detail_view(app, position);
         }
         Some(MenuAction::ToggleBarVisibility) => {
             let Some(runtime) = app.try_state::<BarRuntimeState>() else {

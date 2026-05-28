@@ -15,6 +15,11 @@ pub fn set_surface_mode(
         .map(|mode| mode.as_str().to_string())
 }
 
+#[tauri::command]
+pub fn toggle_detail(app: tauri::AppHandle) -> Result<(), String> {
+    crate::shell::toggle_detail_view(&app, None)
+}
+
 /// Open (or focus) a detached Settings/About window.
 ///
 /// Unlike `set_surface_mode`, this spawns a *separate* window so the tray

@@ -26,6 +26,10 @@ export interface LineChartProps {
   animations?: boolean;
   surprise?: boolean;
   emptyMessage?: string;
+  minValue?: number;
+  maxValue?: number;
+  showAxis?: boolean;
+  interactive?: boolean;
 }
 
 const DEFAULT_COLOR = "var(--chart-credits)";
@@ -41,6 +45,10 @@ export function LineChart({
   animations = true,
   surprise = false,
   emptyMessage,
+  minValue,
+  maxValue,
+  showAxis = true,
+  interactive = true,
 }: LineChartProps) {
   const fmt = valueFormatter ?? ((v: number) => v.toFixed(2));
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -61,8 +69,10 @@ export function LineChart({
   }
 
   const values = data.map((p) => p.value);
-  const max = Math.max(...values, 0.0001);
-  const min = Math.min(...values, 0);
+  const computedMax = Math.max(...values, 0.0001);
+  const computedMin = Math.min(...values, 0);
+  const max = Math.max(maxValue ?? computedMax, computedMin, 0.0001);
+  const min = Math.min(minValue ?? computedMin, max);
   const range = Math.max(max - min, 0.0001);
 
   const plotHeight = Math.max(1, height - 4);
@@ -139,8 +149,8 @@ export function LineChart({
             r={hover?.i === i ? 3 : 1.8}
             fill={color}
             className="chart__point"
-            onMouseMove={(e) => onPointMove(e, i)}
-            onMouseLeave={onLeave}
+            onMouseMove={interactive ? (e) => onPointMove(e, i) : undefined}
+            onMouseLeave={interactive ? onLeave : undefined}
           >
             <title>
               {p.label}: {fmt(p.value)}
@@ -148,12 +158,14 @@ export function LineChart({
           </circle>
         ))}
       </svg>
-      <div className="chart__axis">
-        <span>{data[0].label.slice(-5)}</span>
-        <span className="chart__axis-max">{fmt(max)}</span>
-        <span>{data[data.length - 1].label.slice(-5)}</span>
-      </div>
-      {hover && !anim.running && (
+      {showAxis ? (
+        <div className="chart__axis">
+          <span>{data[0].label.slice(-5)}</span>
+          <span className="chart__axis-max">{fmt(max)}</span>
+          <span>{data[data.length - 1].label.slice(-5)}</span>
+        </div>
+      ) : null}
+      {interactive && hover && !anim.running && (
         <div
           className="chart__tooltip"
           style={{ left: hover.x, top: hover.y }}

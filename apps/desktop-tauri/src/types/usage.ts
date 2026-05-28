@@ -22,4 +22,18 @@ export interface UsageSnapshot {
   confidence: UsageConfidence;
 }
 
+export interface UsageHistoryPoint {
+  provider: UsageProvider;
+  timestamp: string;
+  remaining_pct: number;
+}
+
+export interface SessionLogEntry {
+  provider: UsageProvider;
+  time: string;
+  model: string | null;
+  tokens: number | null;
+  directory: string | null;
+}
+
 export const USAGE_PROVIDERS: UsageProvider[] = ["claude", "codex", "copilot"];

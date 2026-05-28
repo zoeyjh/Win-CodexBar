@@ -25,6 +25,7 @@ use crate::surface_target::SurfaceTarget;
 
 mod chart;
 mod diagnostics;
+mod history;
 mod tokens;
 mod updater;
 
@@ -59,6 +60,7 @@ mod tests;
 
 pub use chart::*;
 pub use diagnostics::*;
+pub use history::*;
 pub use tokens::*;
 pub use updater::*;
 

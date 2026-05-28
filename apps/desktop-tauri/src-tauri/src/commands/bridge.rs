@@ -540,6 +540,10 @@ pub(crate) fn bridge_commands() -> Vec<BridgeCommandDescriptor> {
             description: "Switch the shell to a visible surface using a required typed target.",
         },
         BridgeCommandDescriptor {
+            id: "toggle_detail",
+            description: "Toggle the Phase 5 detail window (pop-out dashboard) on or off.",
+        },
+        BridgeCommandDescriptor {
             id: "close_settings_window",
             description: "Dismiss Settings without exiting the tray application.",
         },
@@ -630,6 +634,14 @@ pub(crate) fn bridge_commands() -> Vec<BridgeCommandDescriptor> {
         BridgeCommandDescriptor {
             id: "get_provider_chart_data",
             description: "Return cost history, credits history, and usage breakdown chart data for a provider.",
+        },
+        BridgeCommandDescriptor {
+            id: "get_usage_history",
+            description: "Read persisted usage-history JSONL for a provider's remaining-percent timeline.",
+        },
+        BridgeCommandDescriptor {
+            id: "get_provider_sessions",
+            description: "Read locally-available session log rows for a provider.",
         },
         BridgeCommandDescriptor {
             id: "get_token_account_providers",

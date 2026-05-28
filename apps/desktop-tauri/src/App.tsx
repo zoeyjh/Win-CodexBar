@@ -6,7 +6,7 @@ import { useSurfaceSnapshot } from "./hooks/useSurfaceSnapshot";
 import { useTheme } from "./hooks/useTheme";
 import Settings from "./surfaces/Settings";
 import TrayPanel from "./surfaces/TrayPanel";
-import PopOutPanel from "./surfaces/PopOutPanel";
+import DetailView from "./surfaces/DetailView";
 import { FloatBar, FLOATBAR_WINDOW_LABEL } from "./floatbar";
 import { LocaleProvider } from "./i18n/LocaleProvider";
 import type { BootstrapState, ThemePreference } from "./types/bridge";
@@ -167,7 +167,7 @@ function SurfaceRouter({
         surface.target.kind === "provider"
           ? surface.target.providerId
           : undefined;
-      return <PopOutPanel state={state} providerId={providerId} />;
+      return <DetailView state={state} providerId={providerId} />;
     }
     case "settings":
       return <SettingsLayout state={state} />;

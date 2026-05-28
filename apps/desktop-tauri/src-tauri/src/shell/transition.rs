@@ -525,6 +525,23 @@ pub(super) fn apply_transition(
     }
 }
 
+pub fn toggle_detail_view(app: &AppHandle, position: Option<(i32, i32)>) -> Result<(), String> {
+    let current = {
+        let st = app.state::<Mutex<AppState>>();
+        st.lock().unwrap().surface_machine.current()
+    };
+    let main_window_visible = app
+        .get_webview_window("main")
+        .and_then(|window| window.is_visible().ok())
+        .unwrap_or(false);
+
+    if should_hide_detail_view_on_toggle(current, main_window_visible) {
+        super::window::hide_to_tray(app).map(|_| ())
+    } else {
+        reopen_to_target(app, SurfaceMode::PopOut, SurfaceTarget::Dashboard, position).map(|_| ())
+    }
+}
+
 /// Toggle the tray panel: hide if currently showing, show at `position` otherwise.
 pub fn toggle_tray_panel(app: &AppHandle, position: Option<(i32, i32)>) {
     let current = {
@@ -546,6 +563,13 @@ pub fn toggle_tray_panel(app: &AppHandle, position: Option<(i32, i32)>) {
             position,
         );
     }
+}
+
+pub(super) fn should_hide_detail_view_on_toggle(
+    current: SurfaceMode,
+    main_window_visible: bool,
+) -> bool {
+    current == SurfaceMode::PopOut && main_window_visible
 }
 
 pub(super) fn should_hide_tray_panel_on_toggle(
