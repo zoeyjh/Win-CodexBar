@@ -678,6 +678,7 @@ version = "0.30.1"
 dependencies = [
  "chrono",
  "codexbar",
+ "rand 0.8.6",
  "raw-window-handle",
  "serde",
  "serde_json",
@@ -685,6 +686,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-global-shortcut",
  "tauri-plugin-single-instance",
+ "tempfile",
  "tokio",
  "tracing",
  "uuid",

@@ -2,6 +2,7 @@
 
 use std::time::Duration;
 
+mod bar;
 mod commands;
 mod events;
 mod floatbar;
