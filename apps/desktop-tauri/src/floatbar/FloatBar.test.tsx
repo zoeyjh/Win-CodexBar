@@ -139,8 +139,11 @@ describe("FloatBar", () => {
     expect(bar).not.toBeNull();
 
     fireEvent.mouseDown(bar!, { clientX: 10, clientY: 10, button: 0 });
-    fireEvent.mouseUp(bar!, { clientX: 12, clientY: 12, button: 0 });
-    expect(coreMocks.invoke).toHaveBeenCalledWith("toggle_detail");
+    fireEvent.mouseUp(bar!, { clientX: 12, clientY: 12, screenX: 112, screenY: 212, button: 0 });
+    expect(coreMocks.invoke).toHaveBeenCalledWith("toggle_detail", {
+      cursorX: 112,
+      cursorY: 212,
+    });
 
     fireEvent.mouseDown(bar!, { clientX: 10, clientY: 10, button: 0 });
     fireEvent.mouseMove(bar!, { clientX: 20, clientY: 10, button: 0 });
