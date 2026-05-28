@@ -19,12 +19,12 @@ pub struct AccountArgs {
 pub enum AccountCommand {
     /// List accounts for a provider
     List {
-        /// Provider name (e.g., claude, cursor, zai)
+        /// Provider name (e.g., claude, copilot)
         provider: String,
     },
     /// Add a new account
     Add {
-        /// Provider name (e.g., claude, cursor, zai)
+        /// Provider name (e.g., claude, copilot)
         provider: String,
         /// Label for the account (e.g., "Personal", "Work")
         #[arg(short, long)]
@@ -35,14 +35,14 @@ pub enum AccountCommand {
     },
     /// Remove an account
     Remove {
-        /// Provider name (e.g., claude, cursor, zai)
+        /// Provider name (e.g., claude, copilot)
         provider: String,
         /// Account label or ID to remove
         account: String,
     },
     /// Switch active account
     Switch {
-        /// Provider name (e.g., claude, cursor, zai)
+        /// Provider name (e.g., claude, copilot)
         provider: String,
         /// Account label or ID to switch to
         account: String,

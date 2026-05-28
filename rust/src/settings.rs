@@ -226,12 +226,8 @@ const DEFAULT_COOKIE_SOURCE: &str = "manual";
 const DEFAULT_PROVIDER_SOURCE: &str = "auto";
 
 /// Default API region for providers that expose one.
-fn default_api_region(id: ProviderId) -> &'static str {
-    match id {
-        ProviderId::Alibaba => "intl",
-        ProviderId::Zai | ProviderId::MiniMax => "global",
-        _ => "",
-    }
+fn default_api_region(_id: ProviderId) -> &'static str {
+    ""
 }
 
 /// Default for the codex `openai_web_extras` boolean (true = show extras).
@@ -272,7 +268,7 @@ impl Default for Settings {
             hide_personal_info: false, // Show personal info by default
             update_channel: UpdateChannel::default(), // Stable by default
             provider_metrics: HashMap::new(), // Empty = use Automatic for all
-            provider_order: Vec::new(), // Empty = canonical ProviderId::all() order
+            provider_order: vec!["claude".to_string(), "codex".to_string(), "copilot".to_string()],
             global_shortcut: default_global_shortcut(), // Ctrl+Shift+U by default
             auto_download_updates: false, // Require explicit opt-in for background downloads
             install_updates_on_quit: false, // Don't auto-install on quit by default
@@ -609,60 +605,6 @@ impl Settings {
     pub fn set_claude_cookie_source(&mut self, v: impl Into<String>) {
         self.set_cookie_source(ProviderId::Claude, v)
     }
-    pub fn cursor_cookie_source(&self) -> &str {
-        self.cookie_source(ProviderId::Cursor)
-    }
-    pub fn set_cursor_cookie_source(&mut self, v: impl Into<String>) {
-        self.set_cookie_source(ProviderId::Cursor, v)
-    }
-    pub fn opencode_cookie_source(&self) -> &str {
-        self.cookie_source(ProviderId::OpenCode)
-    }
-    pub fn set_opencode_cookie_source(&mut self, v: impl Into<String>) {
-        self.set_cookie_source(ProviderId::OpenCode, v)
-    }
-    pub fn factory_cookie_source(&self) -> &str {
-        self.cookie_source(ProviderId::Factory)
-    }
-    pub fn set_factory_cookie_source(&mut self, v: impl Into<String>) {
-        self.set_cookie_source(ProviderId::Factory, v)
-    }
-    pub fn alibaba_cookie_source(&self) -> &str {
-        self.cookie_source(ProviderId::Alibaba)
-    }
-    pub fn set_alibaba_cookie_source(&mut self, v: impl Into<String>) {
-        self.set_cookie_source(ProviderId::Alibaba, v)
-    }
-    pub fn kimi_cookie_source(&self) -> &str {
-        self.cookie_source(ProviderId::Kimi)
-    }
-    pub fn set_kimi_cookie_source(&mut self, v: impl Into<String>) {
-        self.set_cookie_source(ProviderId::Kimi, v)
-    }
-    pub fn minimax_cookie_source(&self) -> &str {
-        self.cookie_source(ProviderId::MiniMax)
-    }
-    pub fn set_minimax_cookie_source(&mut self, v: impl Into<String>) {
-        self.set_cookie_source(ProviderId::MiniMax, v)
-    }
-    pub fn augment_cookie_source(&self) -> &str {
-        self.cookie_source(ProviderId::Augment)
-    }
-    pub fn set_augment_cookie_source(&mut self, v: impl Into<String>) {
-        self.set_cookie_source(ProviderId::Augment, v)
-    }
-    pub fn amp_cookie_source(&self) -> &str {
-        self.cookie_source(ProviderId::Amp)
-    }
-    pub fn set_amp_cookie_source(&mut self, v: impl Into<String>) {
-        self.set_cookie_source(ProviderId::Amp, v)
-    }
-    pub fn ollama_cookie_source(&self) -> &str {
-        self.cookie_source(ProviderId::Ollama)
-    }
-    pub fn set_ollama_cookie_source(&mut self, v: impl Into<String>) {
-        self.set_cookie_source(ProviderId::Ollama, v)
-    }
 
     pub fn claude_usage_source(&self) -> &str {
         self.usage_source(ProviderId::Claude)
@@ -675,81 +617,6 @@ impl Settings {
     }
     pub fn set_codex_usage_source(&mut self, v: impl Into<String>) {
         self.set_usage_source(ProviderId::Codex, v)
-    }
-
-    pub fn alibaba_api_region(&self) -> &str {
-        self.api_region(ProviderId::Alibaba)
-    }
-    pub fn set_alibaba_api_region(&mut self, v: impl Into<String>) {
-        self.set_api_region(ProviderId::Alibaba, v)
-    }
-    pub fn zai_api_region(&self) -> &str {
-        self.api_region(ProviderId::Zai)
-    }
-    pub fn set_zai_api_region(&mut self, v: impl Into<String>) {
-        self.set_api_region(ProviderId::Zai, v)
-    }
-    pub fn minimax_api_region(&self) -> &str {
-        self.api_region(ProviderId::MiniMax)
-    }
-    pub fn set_minimax_api_region(&mut self, v: impl Into<String>) {
-        self.set_api_region(ProviderId::MiniMax, v)
-    }
-
-    pub fn alibaba_cookie_header(&self) -> &str {
-        self.manual_cookie_header(ProviderId::Alibaba)
-    }
-    pub fn set_alibaba_cookie_header(&mut self, v: impl Into<String>) {
-        self.set_manual_cookie_header(ProviderId::Alibaba, v)
-    }
-    pub fn kimi_manual_cookie_header(&self) -> &str {
-        self.manual_cookie_header(ProviderId::Kimi)
-    }
-    pub fn set_kimi_manual_cookie_header(&mut self, v: impl Into<String>) {
-        self.set_manual_cookie_header(ProviderId::Kimi, v)
-    }
-    pub fn augment_cookie_header(&self) -> &str {
-        self.manual_cookie_header(ProviderId::Augment)
-    }
-    pub fn set_augment_cookie_header(&mut self, v: impl Into<String>) {
-        self.set_manual_cookie_header(ProviderId::Augment, v)
-    }
-    pub fn amp_cookie_header(&self) -> &str {
-        self.manual_cookie_header(ProviderId::Amp)
-    }
-    pub fn set_amp_cookie_header(&mut self, v: impl Into<String>) {
-        self.set_manual_cookie_header(ProviderId::Amp, v)
-    }
-    pub fn ollama_cookie_header(&self) -> &str {
-        self.manual_cookie_header(ProviderId::Ollama)
-    }
-    pub fn set_ollama_cookie_header(&mut self, v: impl Into<String>) {
-        self.set_manual_cookie_header(ProviderId::Ollama, v)
-    }
-    pub fn minimax_cookie_header(&self) -> &str {
-        self.manual_cookie_header(ProviderId::MiniMax)
-    }
-    pub fn set_minimax_cookie_header(&mut self, v: impl Into<String>) {
-        self.set_manual_cookie_header(ProviderId::MiniMax, v)
-    }
-
-    pub fn opencode_workspace_id(&self) -> &str {
-        self.workspace_id(ProviderId::OpenCode)
-    }
-    pub fn set_opencode_workspace_id(&mut self, v: impl Into<String>) {
-        self.set_workspace_id(ProviderId::OpenCode, v)
-    }
-    pub fn minimax_api_token(&self) -> &str {
-        self.api_token(ProviderId::MiniMax)
-    }
-    pub fn set_minimax_api_token(&mut self, v: impl Into<String>) {
-        self.set_api_token(ProviderId::MiniMax, v)
-    }
-    pub fn jetbrains_ide_base_path(&self) -> &str {
-        self.ide_base_path(ProviderId::JetBrains)
-    }
-    pub fn set_jetbrains_ide_base_path(&mut self, v: impl Into<String>) {
-        self.set_ide_base_path(ProviderId::JetBrains, v)
     }
 
     pub fn codex_openai_web_extras(&self) -> bool {

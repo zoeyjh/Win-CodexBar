@@ -230,30 +230,6 @@ impl From<RawSettings> for Settings {
                 }
             }
         }
-        fn set_region(
-            map: &mut HashMap<ProviderId, ProviderConfig>,
-            id: ProviderId,
-            value: Option<String>,
-        ) {
-            if let Some(v) = value {
-                let entry = map.entry(id).or_default();
-                if entry.api_region.is_none() {
-                    entry.api_region = Some(v);
-                }
-            }
-        }
-        fn set_header(
-            map: &mut HashMap<ProviderId, ProviderConfig>,
-            id: ProviderId,
-            value: Option<String>,
-        ) {
-            if let Some(v) = value {
-                let entry = map.entry(id).or_default();
-                if entry.manual_cookie_header.is_none() {
-                    entry.manual_cookie_header = Some(v);
-                }
-            }
-        }
 
         set_cookie_source(
             &mut provider_configs,
@@ -264,51 +240,6 @@ impl From<RawSettings> for Settings {
             &mut provider_configs,
             ProviderId::Claude,
             raw.claude_cookie_source,
-        );
-        set_cookie_source(
-            &mut provider_configs,
-            ProviderId::Cursor,
-            raw.cursor_cookie_source,
-        );
-        set_cookie_source(
-            &mut provider_configs,
-            ProviderId::OpenCode,
-            raw.opencode_cookie_source,
-        );
-        set_cookie_source(
-            &mut provider_configs,
-            ProviderId::Factory,
-            raw.factory_cookie_source,
-        );
-        set_cookie_source(
-            &mut provider_configs,
-            ProviderId::Alibaba,
-            raw.alibaba_cookie_source,
-        );
-        set_cookie_source(
-            &mut provider_configs,
-            ProviderId::Kimi,
-            raw.kimi_cookie_source,
-        );
-        set_cookie_source(
-            &mut provider_configs,
-            ProviderId::MiniMax,
-            raw.minimax_cookie_source,
-        );
-        set_cookie_source(
-            &mut provider_configs,
-            ProviderId::Augment,
-            raw.augment_cookie_source,
-        );
-        set_cookie_source(
-            &mut provider_configs,
-            ProviderId::Amp,
-            raw.amp_cookie_source,
-        );
-        set_cookie_source(
-            &mut provider_configs,
-            ProviderId::Ollama,
-            raw.ollama_cookie_source,
         );
 
         set_usage_source(
@@ -322,67 +253,6 @@ impl From<RawSettings> for Settings {
             raw.codex_usage_source,
         );
 
-        set_region(
-            &mut provider_configs,
-            ProviderId::Alibaba,
-            raw.alibaba_api_region,
-        );
-        set_region(&mut provider_configs, ProviderId::Zai, raw.zai_api_region);
-        set_region(
-            &mut provider_configs,
-            ProviderId::MiniMax,
-            raw.minimax_api_region,
-        );
-
-        set_header(
-            &mut provider_configs,
-            ProviderId::Alibaba,
-            raw.alibaba_cookie_header,
-        );
-        set_header(
-            &mut provider_configs,
-            ProviderId::Kimi,
-            raw.kimi_manual_cookie_header,
-        );
-        set_header(
-            &mut provider_configs,
-            ProviderId::Augment,
-            raw.augment_cookie_header,
-        );
-        set_header(
-            &mut provider_configs,
-            ProviderId::Amp,
-            raw.amp_cookie_header,
-        );
-        set_header(
-            &mut provider_configs,
-            ProviderId::Ollama,
-            raw.ollama_cookie_header,
-        );
-        set_header(
-            &mut provider_configs,
-            ProviderId::MiniMax,
-            raw.minimax_cookie_header,
-        );
-
-        if let Some(v) = raw.opencode_workspace_id {
-            let entry = provider_configs.entry(ProviderId::OpenCode).or_default();
-            if entry.workspace_id.is_none() {
-                entry.workspace_id = Some(v);
-            }
-        }
-        if let Some(v) = raw.minimax_api_token {
-            let entry = provider_configs.entry(ProviderId::MiniMax).or_default();
-            if entry.api_token.is_none() {
-                entry.api_token = Some(v);
-            }
-        }
-        if let Some(v) = raw.jetbrains_ide_base_path {
-            let entry = provider_configs.entry(ProviderId::JetBrains).or_default();
-            if entry.ide_base_path.is_none() {
-                entry.ide_base_path = Some(v);
-            }
-        }
         if let Some(v) = raw.codex_openai_web_extras {
             let entry = provider_configs.entry(ProviderId::Codex).or_default();
             if entry.openai_web_extras.is_none() {

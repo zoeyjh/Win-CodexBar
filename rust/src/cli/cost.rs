@@ -11,7 +11,7 @@ use crate::cost_scanner::{CostScanner, CostSummary};
 /// Arguments for the cost command
 #[derive(Args, Debug, Default)]
 pub struct CostArgs {
-    /// Provider to query (codex, claude, cursor, gemini, copilot, all, both)
+    /// Provider to query (codex, claude, copilot, all, both)
     #[arg(short, long)]
     pub provider: Option<String>,
 

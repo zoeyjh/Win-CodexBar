@@ -107,7 +107,7 @@ fn test_settings_provider_enabled() {
     let settings = Settings::default();
     assert!(settings.is_provider_enabled(ProviderId::Claude));
     assert!(settings.is_provider_enabled(ProviderId::Codex));
-    assert!(!settings.is_provider_enabled(ProviderId::Gemini));
+    assert!(!settings.is_provider_enabled(ProviderId::Copilot));
 }
 
 #[test]
@@ -146,40 +146,15 @@ fn test_settings_get_all_providers_status() {
     assert_eq!(claude_status.name, "Claude");
     assert!(claude_status.enabled);
 
-    let gemini_status = status.iter().find(|s| s.id == "gemini").unwrap();
-    assert!(!gemini_status.enabled);
+    let copilot_status = status.iter().find(|s| s.id == "copilot").unwrap();
+    assert!(!copilot_status.enabled);
 }
 
 #[test]
-fn test_api_key_provider_catalog_includes_token_providers() {
+fn test_api_key_provider_catalog_only_includes_copilot() {
     let providers = get_api_key_providers();
-    for id in [
-        ProviderId::Kilo,
-        ProviderId::Bedrock,
-        ProviderId::Codebuff,
-        ProviderId::DeepSeek,
-        ProviderId::ElevenLabs,
-        ProviderId::Deepgram,
-        ProviderId::Grok,
-        ProviderId::Groq,
-        ProviderId::LLMProxy,
-    ] {
-        assert!(
-            providers.iter().any(|provider| provider.id == id),
-            "{id} should be configurable from the API Keys UI"
-        );
-    }
-}
-
-#[test]
-fn test_t3_chat_is_cookie_configured_not_api_key_configured() {
-    let providers = get_api_key_providers();
-    assert!(
-        !providers
-            .iter()
-            .any(|provider| provider.id == ProviderId::T3Chat),
-        "T3 Chat fetches usage from browser cookies or pasted cURL, not API keys"
-    );
+    assert_eq!(providers.len(), 1);
+    assert_eq!(providers[0].id, ProviderId::Copilot);
 }
 
 #[test]
@@ -378,105 +353,53 @@ fn test_settings_roundtrip_with_theme() {
     assert_eq!(loaded.theme, ThemePreference::Dark);
 }
 
-// ── Phase 3: provider_configs migration tests ───────────────────────
+// Phase 3: provider_configs migration tests
 
 /// Loading a legacy `settings.json` (with flat per-provider fields)
 /// must populate `provider_configs` and surface every value through the
 /// per-provider accessors.
 #[test]
 fn test_legacy_per_provider_fields_migrate_into_provider_configs() {
-    // NOTE: placeholder values only — no real cookies/tokens.
     let legacy_json = r#"{
             "enabled_providers": ["claude", "codex"],
             "refresh_interval_secs": 300,
             "codex_cookie_source": "manual",
             "claude_cookie_source": "browser",
-            "cursor_cookie_source": "manual",
-            "alibaba_cookie_source": "manual",
-            "alibaba_cookie_header": "ali=PLACEHOLDER",
-            "alibaba_api_region": "cn",
-            "zai_api_region": "cn",
-            "minimax_api_region": "cn",
-            "minimax_api_token": "TOK_PLACEHOLDER",
             "claude_usage_source": "ccusage",
             "codex_usage_source": "manual",
             "codex_openai_web_extras": false,
             "codex_historical_tracking": true,
-            "claude_avoid_keychain_prompts": true,
-            "opencode_workspace_id": "ws_placeholder",
-            "jetbrains_ide_base_path": "C:/JB"
+            "claude_avoid_keychain_prompts": true
         }"#;
 
     let settings: Settings = serde_json::from_str(legacy_json).unwrap();
 
-    // Cookie sources
     assert_eq!(settings.cookie_source(ProviderId::Codex), "manual");
     assert_eq!(settings.cookie_source(ProviderId::Claude), "browser");
-    assert_eq!(settings.cookie_source(ProviderId::Cursor), "manual");
-    assert_eq!(settings.cookie_source(ProviderId::Alibaba), "manual");
-    // Untouched providers fall through to the default "manual" to avoid
-    // background browser-cookie reads unless the user opts into Automatic.
-    assert_eq!(settings.cookie_source(ProviderId::Amp), "manual");
-
-    // Manual cookie headers + api regions
-    assert_eq!(
-        settings.manual_cookie_header(ProviderId::Alibaba),
-        "ali=PLACEHOLDER"
-    );
-    assert_eq!(settings.api_region(ProviderId::Alibaba), "cn");
-    assert_eq!(settings.api_region(ProviderId::Zai), "cn");
-    assert_eq!(settings.api_region(ProviderId::MiniMax), "cn");
-
-    // Usage sources
     assert_eq!(settings.usage_source(ProviderId::Claude), "ccusage");
     assert_eq!(settings.usage_source(ProviderId::Codex), "manual");
-
-    // Codex booleans
     assert!(!settings.openai_web_extras(ProviderId::Codex));
     assert!(settings.historical_tracking(ProviderId::Codex));
-
-    // Claude per-provider boolean
     assert!(settings.avoid_keychain_prompts(ProviderId::Claude));
 
-    // Misc per-provider strings
-    assert_eq!(
-        settings.workspace_id(ProviderId::OpenCode),
-        "ws_placeholder"
-    );
-    assert_eq!(settings.api_token(ProviderId::MiniMax), "TOK_PLACEHOLDER");
-    assert_eq!(settings.ide_base_path(ProviderId::JetBrains), "C:/JB");
-
-    // Legacy field-name aliases agree with typed accessors.
     assert_eq!(settings.codex_cookie_source(), "manual");
-    assert_eq!(settings.alibaba_api_region(), "cn");
-    assert!(settings.codex_historical_tracking());
     assert!(!settings.codex_openai_web_extras());
+    assert!(settings.codex_historical_tracking());
     assert!(settings.claude_avoid_keychain_prompts());
 }
 
-/// Round-trip: build a `Settings` programmatically via the new map +
-/// accessors, serialize, parse back, and assert equality of every
-/// per-provider field.
 #[test]
 fn test_provider_configs_roundtrip() {
     let mut settings = Settings::default();
     settings.set_cookie_source(ProviderId::Codex, "manual");
     settings.set_cookie_source(ProviderId::Claude, "browser");
     settings.set_usage_source(ProviderId::Claude, "ccusage");
-    settings.set_api_region(ProviderId::Alibaba, "cn");
-    settings.set_api_region(ProviderId::Zai, "cn");
-    settings.set_manual_cookie_header(ProviderId::Amp, "amp=PLACEHOLDER");
-    settings.set_api_token(ProviderId::MiniMax, "TOK_PLACEHOLDER");
-    settings.set_workspace_id(ProviderId::OpenCode, "ws_placeholder");
-    settings.set_ide_base_path(ProviderId::JetBrains, "C:/JB");
     settings.set_openai_web_extras(ProviderId::Codex, false);
     settings.set_historical_tracking(ProviderId::Codex, true);
     settings.set_avoid_keychain_prompts(ProviderId::Claude, true);
 
     let json = serde_json::to_string(&settings).unwrap();
-    // The legacy flat fields must NOT appear in serialized output.
     assert!(!json.contains("\"codex_cookie_source\""), "json: {json}");
-    assert!(!json.contains("\"alibaba_api_region\""), "json: {json}");
     assert!(
         !json.contains("\"claude_avoid_keychain_prompts\""),
         "json: {json}"
@@ -487,15 +410,6 @@ fn test_provider_configs_roundtrip() {
     assert_eq!(loaded.cookie_source(ProviderId::Codex), "manual");
     assert_eq!(loaded.cookie_source(ProviderId::Claude), "browser");
     assert_eq!(loaded.usage_source(ProviderId::Claude), "ccusage");
-    assert_eq!(loaded.api_region(ProviderId::Alibaba), "cn");
-    assert_eq!(loaded.api_region(ProviderId::Zai), "cn");
-    assert_eq!(
-        loaded.manual_cookie_header(ProviderId::Amp),
-        "amp=PLACEHOLDER"
-    );
-    assert_eq!(loaded.api_token(ProviderId::MiniMax), "TOK_PLACEHOLDER");
-    assert_eq!(loaded.workspace_id(ProviderId::OpenCode), "ws_placeholder");
-    assert_eq!(loaded.ide_base_path(ProviderId::JetBrains), "C:/JB");
     assert!(!loaded.openai_web_extras(ProviderId::Codex));
     assert!(loaded.historical_tracking(ProviderId::Codex));
     assert!(loaded.avoid_keychain_prompts(ProviderId::Claude));
@@ -505,8 +419,6 @@ fn test_provider_configs_roundtrip() {
     );
 }
 
-/// New-format files (no legacy flat fields, only `provider_configs`)
-/// must load identically.
 #[test]
 fn test_new_format_provider_configs_only() {
     let json = r#"{
@@ -514,25 +426,17 @@ fn test_new_format_provider_configs_only() {
             "refresh_interval_secs": 300,
             "provider_configs": {
                 "codex": { "cookie_source": "manual", "openai_web_extras": false },
-                "alibaba": { "api_region": "cn", "manual_cookie_header": "ali=PLACEHOLDER" }
+                "claude": { "usage_source": "ccusage" }
             }
         }"#;
 
     let settings: Settings = serde_json::from_str(json).unwrap();
     assert_eq!(settings.cookie_source(ProviderId::Codex), "manual");
     assert!(!settings.openai_web_extras(ProviderId::Codex));
-    assert_eq!(settings.api_region(ProviderId::Alibaba), "cn");
-    assert_eq!(
-        settings.manual_cookie_header(ProviderId::Alibaba),
-        "ali=PLACEHOLDER"
-    );
-    // Untouched providers still get their defaults.
+    assert_eq!(settings.usage_source(ProviderId::Claude), "ccusage");
     assert_eq!(settings.cookie_source(ProviderId::Claude), "manual");
-    assert_eq!(settings.api_region(ProviderId::Zai), "global");
 }
 
-/// Default `Settings` should serialize WITHOUT a `provider_configs`
-/// field (empty map skipped).
 #[test]
 fn test_default_settings_skip_empty_provider_configs() {
     let settings = Settings::default();
@@ -543,15 +447,12 @@ fn test_default_settings_skip_empty_provider_configs() {
     );
 }
 
-/// Per-provider defaults are applied even when the entry is absent.
 #[test]
 fn test_per_provider_defaults_applied() {
     let settings = Settings::default();
     assert_eq!(settings.cookie_source(ProviderId::Codex), "manual");
     assert_eq!(settings.usage_source(ProviderId::Codex), "auto");
-    assert_eq!(settings.api_region(ProviderId::Alibaba), "intl");
-    assert_eq!(settings.api_region(ProviderId::Zai), "global");
-    assert_eq!(settings.api_region(ProviderId::MiniMax), "global");
+    assert_eq!(settings.cookie_source(ProviderId::Claude), "manual");
     assert!(settings.openai_web_extras(ProviderId::Codex));
     assert!(!settings.historical_tracking(ProviderId::Codex));
     assert!(!settings.avoid_keychain_prompts(ProviderId::Claude));
