@@ -69,7 +69,38 @@ describe("App detail surface", () => {
     tauriMocks.checkForUpdates.mockResolvedValue(undefined);
     tauriMocks.setSurfaceMode.mockResolvedValue(undefined);
     tauriMocks.getLocaleStrings.mockResolvedValue(buildBundle());
-    tauriMocks.getCachedProviders.mockResolvedValue([]);
+    tauriMocks.getCachedProviders.mockResolvedValue([
+      {
+        providerId: "claude",
+        displayName: "Claude",
+        primary: {
+          usedPercent: 42,
+          remainingPercent: 58,
+          windowMinutes: 300,
+          resetsAt: "2026-05-28T10:30:00Z",
+          resetDescription: null,
+          isExhausted: false,
+          reservePercent: null,
+          reserveDescription: null,
+        },
+        primaryLabel: "Session",
+        secondary: null,
+        secondaryLabel: null,
+        modelSpecific: null,
+        tertiary: null,
+        extraRateWindows: [],
+        cost: null,
+        planName: "Pro",
+        accountEmail: null,
+        sourceLabel: "CLI",
+        updatedAt: "2026-05-28T09:00:00Z",
+        error: null,
+        pace: null,
+        accountOrganization: null,
+        trayStatusLabel: "42%",
+        fetchDurationMs: null,
+      },
+    ]);
     tauriMocks.refreshProviders.mockResolvedValue(undefined);
     tauriMocks.refreshProvidersIfStale.mockResolvedValue(undefined);
     tauriMocks.emitCachedUsageUpdates.mockResolvedValue(undefined);
@@ -110,14 +141,15 @@ describe("App detail surface", () => {
     ]);
   });
 
-  it("renders the Phase 5 detail view when the shell is in popOut mode", async () => {
+  it("renders the grouped Next Reset detail view when the shell is in popOut mode", async () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText("Plan Remaining")).toBeInTheDocument();
+      expect(screen.getByText("Next Reset")).toBeInTheDocument();
     });
-    expect(screen.getByText("Sessions")).toBeInTheDocument();
-    expect(screen.getByText("Next Reset")).toBeInTheDocument();
+    expect(screen.getByText("Claude")).toBeInTheDocument();
+    expect(screen.getByText("Pro")).toBeInTheDocument();
+    expect(screen.getByText("Session")).toBeInTheDocument();
   });
 
   it("opens the detail view on first run when no provider credentials exist", async () => {

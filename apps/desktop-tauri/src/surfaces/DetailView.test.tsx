@@ -1,103 +1,140 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { UsageSnapshot } from "../types/usage";
+import type { ProviderUsageSnapshot } from "../types/bridge";
 
-const listeners = new Map<string, (event: { payload: UsageSnapshot }) => void>();
-
-const eventMocks = vi.hoisted(() => ({
-  listen: vi.fn((event: string, handler: (event: { payload: UsageSnapshot }) => void) => {
-    listeners.set(event, handler);
-    return Promise.resolve(() => listeners.delete(event));
-  }),
+const useProvidersMocks = vi.hoisted(() => ({
+  useProviders: vi.fn(),
 }));
 
-const tauriMocks = vi.hoisted(() => ({
-  getUsageHistory: vi.fn(),
-  getProviderSessions: vi.fn(),
-  openSettingsWindow: vi.fn(),
-  emitCachedUsageUpdates: vi.fn(),
-}));
-
-vi.mock("@tauri-apps/api/event", () => eventMocks);
-vi.mock("../lib/tauri", () => tauriMocks);
+vi.mock("../hooks/useProviders", () => useProvidersMocks);
 
 import DetailView from "./DetailView";
 
-function emitUsage(snapshot: UsageSnapshot) {
-  const handler = listeners.get("usage:update");
-  if (!handler) {
-    throw new Error("usage:update listener missing");
-  }
-  act(() => {
-    handler({ payload: snapshot });
-  });
+function buildSnapshot(
+  overrides: Partial<ProviderUsageSnapshot>,
+): ProviderUsageSnapshot {
+  return {
+    providerId: "claude",
+    displayName: "Claude",
+    primary: {
+      usedPercent: 42,
+      remainingPercent: 58,
+      windowMinutes: 300,
+      resetsAt: "2026-05-28T10:30:00Z",
+      resetDescription: null,
+      isExhausted: false,
+      reservePercent: null,
+      reserveDescription: null,
+    },
+    primaryLabel: "Session",
+    secondary: null,
+    secondaryLabel: undefined,
+    modelSpecific: null,
+    tertiary: null,
+    extraRateWindows: [],
+    cost: null,
+    planName: null,
+    accountEmail: null,
+    sourceLabel: "CLI",
+    updatedAt: "2026-05-28T09:00:00Z",
+    error: null,
+    pace: null,
+    accountOrganization: null,
+    trayStatusLabel: null,
+    fetchDurationMs: null,
+    ...overrides,
+  };
 }
 
 describe("DetailView", () => {
   beforeEach(() => {
-    listeners.clear();
     vi.clearAllMocks();
-    tauriMocks.emitCachedUsageUpdates.mockResolvedValue(undefined);
-    tauriMocks.getUsageHistory.mockResolvedValue([
-      {
-        provider: "claude",
-        timestamp: "2026-05-28T10:00:00Z",
-        remaining_pct: 90,
-      },
-    ]);
-    tauriMocks.getProviderSessions.mockResolvedValue([]);
+    useProvidersMocks.useProviders.mockReturnValue({
+      providers: [],
+      isRefreshing: false,
+      refresh: vi.fn(),
+      lastRefresh: null,
+      hasCachedData: false,
+    });
   });
 
-  it("renders cards and keeps at least one provider toggle active", async () => {
-    await act(async () => {
-      render(<DetailView state={{} as never} />);
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Plan Remaining")).toBeInTheDocument();
-    });
-    expect(screen.getByText("Sessions")).toBeInTheDocument();
-    expect(screen.getByText("Next Reset")).toBeInTheDocument();
-    expect(tauriMocks.emitCachedUsageUpdates).toHaveBeenCalledTimes(1);
-
-    const claude = screen.getByRole("button", { name: /Claude/i });
-    const codex = screen.getByRole("button", { name: /Codex/i });
-    const copilot = screen.getByRole("button", { name: /Copilot/i });
-
-    fireEvent.click(codex);
-    fireEvent.click(copilot);
-    fireEvent.click(claude);
-
-    expect(claude).toHaveAttribute("aria-pressed", "true");
-  });
-
-  it("applies usage:update payloads to the toggle summary and reset card", async () => {
+  it("renders grouped provider windows from live provider snapshots", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-28T09:00:00Z"));
 
-    try {
-      await act(async () => {
-        render(<DetailView state={{} as never} />);
-        await Promise.resolve();
-      });
-      emitUsage({
-        provider: "claude",
-        plan: "Pro",
-        unit: "percent",
-        used: null,
-        limit: null,
-        remaining_pct: 81,
-        reset_at: "2026-05-28T12:30:00Z",
-        status: "ok",
-        last_success_at: "2026-05-28T09:00:00Z",
-        confidence: "high",
-      });
+    useProvidersMocks.useProviders.mockReturnValue({
+      providers: [
+        buildSnapshot({
+          planName: "Pro",
+          secondary: {
+            usedPercent: 68,
+            remainingPercent: 32,
+            windowMinutes: 10080,
+            resetsAt: "2026-05-29T09:00:00Z",
+            resetDescription: null,
+            isExhausted: false,
+            reservePercent: null,
+            reserveDescription: null,
+          },
+          secondaryLabel: "Weekly",
+          extraRateWindows: [
+            {
+              id: "extra",
+              title: "Bonus",
+              window: {
+                usedPercent: 15,
+                remainingPercent: 85,
+                windowMinutes: 1440,
+                resetsAt: "2026-05-28T09:20:00Z",
+                resetDescription: null,
+                isExhausted: false,
+                reservePercent: null,
+                reserveDescription: null,
+              },
+            },
+          ],
+        }),
+      ],
+      isRefreshing: false,
+      refresh: vi.fn(),
+      lastRefresh: null,
+      hasCachedData: true,
+    });
 
-      expect(screen.getByRole("button", { name: /Claude 81%/i })).toBeInTheDocument();
-      expect(screen.getByText("3h 30m remaining")).toBeInTheDocument();
+    try {
+      render(<DetailView state={{} as never} />);
+
+      expect(screen.getByText("Next Reset")).toBeInTheDocument();
+      expect(screen.getByText("Claude")).toBeInTheDocument();
+      expect(screen.getByText("Pro")).toBeInTheDocument();
+      expect(screen.getByText(/42% used/i)).toBeInTheDocument();
+      expect(screen.getByText(/68% used/i)).toBeInTheDocument();
+      expect(screen.getByText(/15% used/i)).toBeInTheDocument();
+      expect(screen.getByText("Session")).toBeInTheDocument();
+      expect(screen.getByText("Weekly")).toBeInTheDocument();
+      expect(screen.getByText("Bonus")).toBeInTheDocument();
+      expect(screen.getByText(/1h 30m/i)).toBeInTheDocument();
+      expect(screen.getByText(/20m/i)).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("filters the grouped reset view to a single provider when providerId is set", () => {
+    useProvidersMocks.useProviders.mockReturnValue({
+      providers: [
+        buildSnapshot({ providerId: "claude", displayName: "Claude" }),
+        buildSnapshot({ providerId: "codex", displayName: "Codex" }),
+      ],
+      isRefreshing: false,
+      refresh: vi.fn(),
+      lastRefresh: null,
+      hasCachedData: true,
+    });
+
+    render(<DetailView state={{} as never} providerId="codex" />);
+
+    expect(screen.getByText("Codex")).toBeInTheDocument();
+    expect(screen.queryByText("Claude")).not.toBeInTheDocument();
   });
 });

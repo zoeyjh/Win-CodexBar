@@ -14,7 +14,7 @@ body:has(.detail-view) {
 
 .detail-view {
   min-height: 100vh;
-  padding: 24px;
+  padding: 16px;
   background: var(--detail-bg);
   color: var(--detail-fg-1);
   font-family: "Pretendard", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
@@ -79,10 +79,7 @@ body:has(.detail-view) {
 
 .detail-view__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-areas:
-    "plan plan"
-    "sessions reset";
+  grid-template-columns: 1fr;
   gap: 14px;
 }
 
@@ -165,6 +162,11 @@ body:has(.detail-view) {
   position: absolute;
   inset: 0 0 24px;
   pointer-events: none;
+}
+
+.detail-line-chart .chart__svg {
+  height: 120px;
+  width: 100%;
 }
 
 .detail-card__legend {
@@ -312,4 +314,81 @@ body:has(.detail-view) {
       "sessions"
       "reset";
   }
+}
+
+/* ── Reset Groups (Grouped Cards) ─────────────────────────────────── */
+
+.reset-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reset-group {
+  background: var(--detail-card-inset);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.reset-group__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.reset-group__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.reset-group__name {
+  font-size: 13px;
+  color: var(--detail-fg-1);
+}
+
+.reset-group__plan {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--detail-fg-3);
+}
+
+.reset-group__windows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reset-window__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.reset-window__label {
+  font-size: 12px;
+  color: var(--detail-fg-3);
+}
+
+.reset-window__info {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--detail-fg-2);
+}
+
+.reset-window__bar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.reset-window__fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
 }

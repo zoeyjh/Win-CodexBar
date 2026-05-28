@@ -1,3 +1,4 @@
+import type { ProviderUsageSnapshot, RateWindowSnapshot } from "../types/bridge";
 import type { UsageProvider, UsageSnapshot } from "../types/usage";
 
 export const DETAIL_PROVIDER_META: Record<UsageProvider, { label: string; color: string }> = {
@@ -73,4 +74,48 @@ export function formatTokens(tokens: number | null): string {
     return "--";
   }
   return new Intl.NumberFormat().format(tokens);
+}
+
+export const PROVIDER_COLORS: Record<string, string> = {
+  claude: "#C97A3E",
+  codex: "#4A9EFF",
+  copilot: "#7B61FF",
+};
+
+export function formatWindowCountdown(resetsAt: string | null): string {
+  if (!resetsAt) return "--";
+  const remainingMs = new Date(resetsAt).getTime() - Date.now();
+  if (Number.isNaN(remainingMs) || remainingMs <= 0) return "now";
+  const totalMinutes = Math.ceil(remainingMs / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 24) {
+    const days = Math.floor(hours / 24);
+    return `${days}d ${hours % 24}h`;
+  }
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+export interface RateWindowEntry {
+  label: string;
+  window: RateWindowSnapshot;
+}
+
+export function collectRateWindows(snapshot: ProviderUsageSnapshot): RateWindowEntry[] {
+  const windows: RateWindowEntry[] = [];
+  windows.push({ label: snapshot.primaryLabel ?? "Session", window: snapshot.primary });
+  if (snapshot.secondary) {
+    windows.push({ label: snapshot.secondaryLabel ?? "Weekly", window: snapshot.secondary });
+  }
+  if (snapshot.tertiary) {
+    windows.push({ label: "Monthly", window: snapshot.tertiary });
+  }
+  if (snapshot.modelSpecific) {
+    windows.push({ label: "Model", window: snapshot.modelSpecific });
+  }
+  for (const extra of snapshot.extraRateWindows) {
+    windows.push({ label: extra.title, window: extra.window });
+  }
+  return windows;
 }

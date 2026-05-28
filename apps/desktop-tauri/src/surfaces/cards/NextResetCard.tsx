@@ -1,21 +1,19 @@
+import type { ProviderUsageSnapshot } from "../../types/bridge";
 import { openSettingsWindow } from "../../lib/tauri";
-import type { UsageProvider, UsageSnapshot } from "../../types/usage";
 import {
-  DETAIL_PROVIDER_META,
-  formatCountdown,
-  formatDateTime,
+  PROVIDER_COLORS,
+  collectRateWindows,
+  formatWindowCountdown,
 } from "../detailShared";
 
 export default function NextResetCard({
-  activeProviders,
-  snapshots,
+  providers,
 }: {
-  activeProviders: UsageProvider[];
-  snapshots: Partial<Record<UsageProvider, UsageSnapshot | null>>;
+  providers: ProviderUsageSnapshot[];
 }) {
-  const providersWithReset = activeProviders.filter((provider) => snapshots[provider]?.reset_at);
+  const activeProviders = providers.filter((p) => !p.error);
 
-  if (providersWithReset.length === 0) {
+  if (activeProviders.length === 0) {
     return (
       <section className="detail-card detail-card--reset" aria-labelledby="detail-reset-heading">
         <div className="detail-card__header">
@@ -42,26 +40,39 @@ export default function NextResetCard({
           <p>Provider reset schedule</p>
         </div>
       </div>
-      <div className="reset-card">
+      <div className="reset-groups">
         {activeProviders.map((provider) => {
-          const snapshot = snapshots[provider] ?? null;
-          const remainingPct = snapshot?.remaining_pct ?? 0;
-          const progressPct = Math.max(0, Math.min(100, 100 - remainingPct));
+          const color = PROVIDER_COLORS[provider.providerId] ?? "#888";
+          const windows = collectRateWindows(provider);
           return (
-            <div key={provider} className="reset-card__item">
-              <div className="reset-card__row">
-                <span
-                  className="reset-card__dot"
-                  style={{ backgroundColor: DETAIL_PROVIDER_META[provider].color }}
-                />
-                <div className="reset-card__identity">
-                  <strong>{DETAIL_PROVIDER_META[provider].label}</strong>
-                  <span>{formatDateTime(snapshot?.reset_at ?? null)}</span>
-                </div>
-                <span className="reset-card__countdown">{formatCountdown(snapshot?.reset_at ?? null)}</span>
+            <div key={provider.providerId} className="reset-group">
+              <div className="reset-group__header">
+                <span className="reset-group__dot" style={{ backgroundColor: color }} />
+                <strong className="reset-group__name">{provider.displayName}</strong>
+                {provider.planName && (
+                  <span className="reset-group__plan">{provider.planName}</span>
+                )}
               </div>
-              <div className="reset-card__timeline" aria-hidden>
-                <span className="reset-card__timeline-fill" style={{ width: `${progressPct}%` }} />
+              <div className="reset-group__windows">
+                {windows.map((entry) => (
+                  <div key={entry.label} className="reset-window">
+                    <div className="reset-window__row">
+                      <span className="reset-window__label">{entry.label}</span>
+                      <span className="reset-window__info">
+                        {Math.round(entry.window.usedPercent)}% used · {formatWindowCountdown(entry.window.resetsAt)}
+                      </span>
+                    </div>
+                    <div className="reset-window__bar">
+                      <span
+                        className="reset-window__fill"
+                        style={{
+                          width: `${Math.min(100, entry.window.usedPercent)}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           );
