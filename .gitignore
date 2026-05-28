@@ -60,7 +60,6 @@ nul
 .env
 .env.*
 /.local/
-/docs/
 /scripts/*
 /docs/ui-parity-workflow.md
 /scripts/crop_vm_preferences_proof.sh
@@ -102,3 +101,5 @@ codexbar-desktop-tauri.exe
 
 # Local git worktrees
 .worktrees/
+
+.superpowers/

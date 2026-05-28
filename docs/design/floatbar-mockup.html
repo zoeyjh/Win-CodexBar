@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Floating Bar — codexbar-zoey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* page (showcase backdrop) */
+  --bg-page:        #0a0d10;
+  --bg-card:        #14181c;
+  --bg-card-2:      #181d22;
+
+  /* bar surface (acrylic) */
+  --bar-fill:       rgba(20, 24, 28, 0.74);
+  --bar-border:     rgba(255, 255, 255, 0.07);
+  --bar-highlight:  rgba(255, 255, 255, 0.05);
+
+  /* tooltip */
+  --tt-fill:        rgba(28, 33, 38, 0.96);
+  --tt-border:      rgba(255, 255, 255, 0.10);
+
+  /* text */
+  --fg-1:           #e8eaed;
+  --fg-2:           #a3acb4;
+  --fg-3:           #6b7480;
+  --fg-4:           #4b525a;
+
+  /* status */
+  --ok:             #8DC63F;   /* SELVAS green */
+  --warn:           #f5a623;
+  --err:            #f04438;
+  --dim:            #4b525a;
+
+  --bar-h:          32px;
+  --bar-pad-x:      12px;
+  --bar-radius:     10px;
+  --bar-gap:        14px;
+  --bar-font:       12px;
+
+  --font-sans: 'Pretendard', 'Pretendard Variable', -apple-system, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg-page); }
+body {
+  color: var(--fg-1);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" on, "cv11" on;
+  min-height: 100vh;
+  /* Subtle Windows 11 mica-ish desktop backdrop */
+  background-image:
+    radial-gradient(900px 600px at 18% 12%, rgba(141, 198, 63, 0.06), transparent 60%),
+    radial-gradient(700px 540px at 88% 80%, rgba(56, 79, 95, 0.14), transparent 60%),
+    linear-gradient(180deg, #0a0d10 0%, #0c1014 100%);
+}
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 36px 56px 48px;
+}
+
+/* ───── header ───── */
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+.eyebrow {
+  font: 600 10.5px/1 var(--font-sans);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.dot-sep { color: var(--fg-4); }
+h1 {
+  font: 600 26px/1.1 var(--font-sans);
+  letter-spacing: -0.015em;
+}
+.lede {
+  color: var(--fg-2);
+  font-size: 13.5px;
+  margin-top: 6px;
+  max-width: 700px;
+  line-height: 1.55;
+}
+
+/* ───── layout ───── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 36px;
+  align-items: start;
+}
+
+section + section { margin-top: 28px; }
+.section-h {
+  font: 600 10px/1 var(--font-sans);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.section-h::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.08), transparent);
+}
+
+/* ───── THE BAR ───── */
+.bar {
+  height: var(--bar-h);
+  border-radius: var(--bar-radius);
+  background: var(--bar-fill);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--bar-border);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 1px 0 var(--bar-highlight) inset;
+  padding: 0 var(--bar-pad-x);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bar-gap);
+  font-size: var(--bar-font);
+  font-weight: 600;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg-1);
+  line-height: 1;
+  position: relative;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--fg-2);
+}
+.icon svg { width: 100%; height: 100%; display: block; }
+
+.pct {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.005em;
+  color: var(--fg-1);
+}
+
+/* status modifiers — color modulates icon + pct together */
+.provider.ok      .icon { color: var(--ok); }
+.provider.ok      .pct  { color: var(--fg-1); }
+.provider.warn    .icon { color: var(--warn); }
+.provider.warn    .pct  { color: var(--warn); }
+.provider.err     .icon { color: var(--err); }
+.provider.err     .pct  { color: var(--err); }
+.provider.expired .icon { color: var(--dim); }
+.provider.expired .pct  { color: var(--dim); }
+.provider.expired       { opacity: 0.55; }
+.provider.expired .pct::after { content: "—"; display: none; }
+
+/* rate-limit overlay */
+.provider .warn-glyph {
+  margin-left: 1px;
+  color: var(--warn);
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+/* divider between items (super-subtle) */
+.bar .sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+/* ───── State demo rows ───── */
+.state-rows {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 6px 22px;
+}
+.row {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding: 18px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+}
+.row:last-child { border-bottom: none; }
+
+.row-name {
+  font-size: 11.5px;
+  color: var(--fg-1);
+  font-weight: 500;
+}
+.row-name .sub {
+  display: block;
+  font-size: 10.5px;
+  color: var(--fg-3);
+  font-weight: 400;
+  margin-top: 3px;
+  letter-spacing: 0.01em;
+}
+.row-bar {
+  min-height: var(--bar-h);
+  display: flex;
+  align-items: center;
+}
+.row-note {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg-3);
+  text-align: right;
+}
+
+/* ───── Tooltip showcase ───── */
+.tt-stage {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 30px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 36px;
+  align-items: start;
+}
+.tt-col { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+
+.tt-bar-wrap {
+  position: relative;
+  padding-bottom: 0;
+}
+/* Highlight which icon the tooltip targets */
+.tt-bar-wrap .provider.target::after {
+  content: "";
+  position: absolute;
+  inset: -4px -6px;
+  border: 1px solid rgba(141, 198, 63, 0.35);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.tooltip {
+  position: relative;
+  background: var(--tt-fill);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--tt-border);
+  border-radius: 8px;
+  padding: 10px 12px 11px;
+  min-width: 200px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+  margin-top: 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.tooltip.below { margin-left: 6px; }
+.tooltip::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 16px;
+  width: 9px;
+  height: 9px;
+  background: var(--tt-fill);
+  border-left: 1px solid var(--tt-border);
+  border-top: 1px solid var(--tt-border);
+  transform: rotate(45deg);
+}
+.tt-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+.tt-title .icon { color: var(--ok); width: 13px; height: 13px; }
+.tt-title .name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-1);
+}
+.tt-title .plan {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--fg-3);
+  font-weight: 500;
+  padding: 2px 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+}
+.tt-rows {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 14px;
+  font-variant-numeric: tabular-nums;
+}
+.tt-k { color: var(--fg-3); font-weight: 400; font-size: 11px; }
+.tt-v { color: var(--fg-1); font-size: 11px; font-weight: 500; }
+.tt-v.ok { color: var(--ok); }
+.tt-v.warn { color: var(--warn); }
+.tt-v.err { color: var(--err); }
+.tt-v.dim { color: var(--dim); }
+
+.tt-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 7px -12px 7px;
+}
+.tt-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--fg-3);
+}
+.tt-foot svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+/* error variant of tooltip */
+.tooltip.banner-err { border-color: rgba(240, 68, 56, 0.35); }
+.tooltip.banner-err::before { border-color: rgba(240, 68, 56, 0.35); }
+.tt-banner {
+  margin: -2px -12px 8px;
+  padding: 7px 12px;
+  background: rgba(240, 68, 56, 0.10);
+  border-bottom: 1px solid rgba(240, 68, 56, 0.25);
+  color: var(--err);
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 7px 7px 0 0;
+}
+.tt-banner.warn {
+  background: rgba(245, 166, 35, 0.10);
+  border-bottom-color: rgba(245, 166, 35, 0.30);
+  color: var(--warn);
+}
+.tooltip.banner-warn { border-color: rgba(245, 166, 35, 0.30); }
+.tooltip.banner-warn::before { border-color: rgba(245, 166, 35, 0.30); }
+
+.tt-label {
+  font: 500 10px/1 var(--font-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin-bottom: 12px;
+}
+
+/* ───── Aside (spec / palette / rationale) ───── */
+aside {
+  position: sticky;
+  top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.card-h {
+  font: 600 10px/1 var(--font-sans);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin-bottom: 12px;
+}
+.spec-list {
+  list-style: none;
+  font-size: 11.5px;
+}
+.spec-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 5px 0;
+  color: var(--fg-2);
+  border-bottom: 1px dashed rgba(255,255,255,0.06);
+}
+.spec-list li:last-child { border-bottom: none; }
+.spec-list b {
+  color: var(--fg-1);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.swatch {
+  border-radius: 8px;
+  padding: 8px 10px 9px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg-card-2);
+}
+.swatch .chip {
+  width: 100%;
+  height: 28px;
+  border-radius: 5px;
+  margin-bottom: 7px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.swatch .name {
+  font-size: 10.5px;
+  color: var(--fg-1);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.swatch .hex {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  margin-top: 2px;
+}
+
+.rationale {
+  font-size: 11.5px;
+  color: var(--fg-2);
+  line-height: 1.55;
+}
+.rationale p { margin-bottom: 8px; }
+.rationale p:last-child { margin-bottom: 0; }
+.rationale strong {
+  color: var(--fg-1);
+  font-weight: 600;
+}
+.rationale code {
+  background: rgba(141, 198, 63, 0.10);
+  color: var(--ok);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+footer {
+  margin-top: 28px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--fg-3);
+}
+footer a {
+  color: var(--fg-2);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(255,255,255,0.15);
+}
+footer a:hover { color: var(--ok); border-color: var(--ok); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <div class="eyebrow">codexbar-zoey <span class="dot-sep">·</span> screen 1 / 2 <span class="dot-sep">·</span> § 5.1 FloatBar</div>
+      <h1>Floating Bar</h1>
+      <p class="lede">Always-on-top single-line bar. Three providers, percent only — reset time is deferred to hover tooltip. Windows 11 dark, acrylic translucency, minimal chrome.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT COLUMN -->
+    <div>
+
+      <!-- ============== STATES ============== -->
+      <section>
+        <div class="section-h">States</div>
+        <div class="state-rows">
+
+          <!-- Default -->
+          <div class="row">
+            <div class="row-name">Default
+              <span class="sub">all healthy · &gt; 20 %</span>
+            </div>
+            <div class="row-bar">
+              <div class="bar">
+                <span class="provider ok">
+                  <span class="icon"><!-- Claude · sparkle -->
+                    <svg viewBox="0 0 14 14" fill="none"><path d="M7 0 C 7 3.9 10.1 7 14 7 C 10.1 7 7 10.1 7 14 C 7 10.1 3.9 7 0 7 C 3.9 7 7 3.9 7 0 Z" fill="currentColor"/></svg>
+                  </span>
+                  <span class="pct">78%</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider ok">
+                  <span class="icon"><!-- Codex · knot -->
+                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><g transform="translate(7 7)"><ellipse cx="0" cy="0" rx="5.8" ry="2.15"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(60)"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(-60)"/></g></svg>
+                  </span>
+                  <span class="pct">45%</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider ok">
+                  <span class="icon"><!-- Copilot · paired arc -->
+                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.4 V 4.1"/><path d="M9.5 2.4 V 4.1"/><path d="M2.4 6 C 2.4 4.6 3.5 4 5 4 H 9 C 10.5 4 11.6 4.6 11.6 6 C 11.6 7.2 11 7.7 10.7 8 C 11 8.3 11.6 8.8 11.6 10 C 11.6 11.5 10.4 12 9 12 H 5 C 3.6 12 2.4 11.5 2.4 10 C 2.4 8.8 3 8.3 3.3 8 C 3 7.7 2.4 7.2 2.4 6 Z"/><ellipse cx="5.3" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/><ellipse cx="8.7" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/></svg>
+                  </span>
+                  <span class="pct">92%</span>
+                </span>
+              </div>
+            </div>
+            <div class="row-note">228 × 32</div>
+          </div>
+
+          <!-- Low / Critical -->
+          <div class="row">
+            <div class="row-name">Low &amp; Critical
+              <span class="sub">amber &lt; 20 % · red &lt; 10 %</span>
+            </div>
+            <div class="row-bar">
+              <div class="bar">
+                <span class="provider ok">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 0 C 7 3.9 10.1 7 14 7 C 10.1 7 7 10.1 7 14 C 7 10.1 3.9 7 0 7 C 3.9 7 7 3.9 7 0 Z" fill="currentColor"/></svg></span>
+                  <span class="pct">63%</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider warn">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><g transform="translate(7 7)"><ellipse cx="0" cy="0" rx="5.8" ry="2.15"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(60)"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(-60)"/></g></svg></span>
+                  <span class="pct">14%</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider err">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.4 V 4.1"/><path d="M9.5 2.4 V 4.1"/><path d="M2.4 6 C 2.4 4.6 3.5 4 5 4 H 9 C 10.5 4 11.6 4.6 11.6 6 C 11.6 7.2 11 7.7 10.7 8 C 11 8.3 11.6 8.8 11.6 10 C 11.6 11.5 10.4 12 9 12 H 5 C 3.6 12 2.4 11.5 2.4 10 C 2.4 8.8 3 8.3 3.3 8 C 3 7.7 2.4 7.2 2.4 6 Z"/><ellipse cx="5.3" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/><ellipse cx="8.7" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/></svg></span>
+                  <span class="pct">6%</span>
+                </span>
+              </div>
+            </div>
+            <div class="row-note">color-only delta</div>
+          </div>
+
+          <!-- Auth expired -->
+          <div class="row">
+            <div class="row-name">Auth expired
+              <span class="sub">401 / 403 — re-login required</span>
+            </div>
+            <div class="row-bar">
+              <div class="bar">
+                <span class="provider ok">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 0 C 7 3.9 10.1 7 14 7 C 10.1 7 7 10.1 7 14 C 7 10.1 3.9 7 0 7 C 3.9 7 7 3.9 7 0 Z" fill="currentColor"/></svg></span>
+                  <span class="pct">78%</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider expired">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><g transform="translate(7 7)"><ellipse cx="0" cy="0" rx="5.8" ry="2.15"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(60)"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(-60)"/></g></svg></span>
+                  <span class="pct">— —</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider ok">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.4 V 4.1"/><path d="M9.5 2.4 V 4.1"/><path d="M2.4 6 C 2.4 4.6 3.5 4 5 4 H 9 C 10.5 4 11.6 4.6 11.6 6 C 11.6 7.2 11 7.7 10.7 8 C 11 8.3 11.6 8.8 11.6 10 C 11.6 11.5 10.4 12 9 12 H 5 C 3.6 12 2.4 11.5 2.4 10 C 2.4 8.8 3 8.3 3.3 8 C 3 7.7 2.4 7.2 2.4 6 Z"/><ellipse cx="5.3" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/><ellipse cx="8.7" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/></svg></span>
+                  <span class="pct">92%</span>
+                </span>
+              </div>
+            </div>
+            <div class="row-note">opacity 0.55 · "— —"</div>
+          </div>
+
+          <!-- Rate limited -->
+          <div class="row">
+            <div class="row-name">Rate limited
+              <span class="sub">429 — cached value + ⚠</span>
+            </div>
+            <div class="row-bar">
+              <div class="bar">
+                <span class="provider ok">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 0 C 7 3.9 10.1 7 14 7 C 10.1 7 7 10.1 7 14 C 7 10.1 3.9 7 0 7 C 3.9 7 7 3.9 7 0 Z" fill="currentColor"/></svg></span>
+                  <span class="pct">78%</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider warn">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><g transform="translate(7 7)"><ellipse cx="0" cy="0" rx="5.8" ry="2.15"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(60)"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(-60)"/></g></svg></span>
+                  <span class="pct">45%</span>
+                  <span class="warn-glyph">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><path d="M6 1.5 L11 10.5 H1 Z"/><line x1="6" y1="5" x2="6" y2="7.5"/><circle cx="6" cy="9" r="0.4" fill="currentColor"/></svg>
+                  </span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider ok">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.4 V 4.1"/><path d="M9.5 2.4 V 4.1"/><path d="M2.4 6 C 2.4 4.6 3.5 4 5 4 H 9 C 10.5 4 11.6 4.6 11.6 6 C 11.6 7.2 11 7.7 10.7 8 C 11 8.3 11.6 8.8 11.6 10 C 11.6 11.5 10.4 12 9 12 H 5 C 3.6 12 2.4 11.5 2.4 10 C 2.4 8.8 3 8.3 3.3 8 C 3 7.7 2.4 7.2 2.4 6 Z"/><ellipse cx="5.3" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/><ellipse cx="8.7" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/></svg></span>
+                  <span class="pct">92%</span>
+                </span>
+              </div>
+            </div>
+            <div class="row-note">cached · ⚠ overlay</div>
+          </div>
+
+          <!-- Empty / no creds -->
+          <div class="row">
+            <div class="row-name">First run
+              <span class="sub">no credentials yet — placeholder</span>
+            </div>
+            <div class="row-bar">
+              <div class="bar">
+                <span class="provider expired">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 0 C 7 3.9 10.1 7 14 7 C 10.1 7 7 10.1 7 14 C 7 10.1 3.9 7 0 7 C 3.9 7 7 3.9 7 0 Z" fill="currentColor"/></svg></span>
+                  <span class="pct">— —</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider expired">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><g transform="translate(7 7)"><ellipse cx="0" cy="0" rx="5.8" ry="2.15"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(60)"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(-60)"/></g></svg></span>
+                  <span class="pct">— —</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider expired">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.4 V 4.1"/><path d="M9.5 2.4 V 4.1"/><path d="M2.4 6 C 2.4 4.6 3.5 4 5 4 H 9 C 10.5 4 11.6 4.6 11.6 6 C 11.6 7.2 11 7.7 10.7 8 C 11 8.3 11.6 8.8 11.6 10 C 11.6 11.5 10.4 12 9 12 H 5 C 3.6 12 2.4 11.5 2.4 10 C 2.4 8.8 3 8.3 3.3 8 C 3 7.7 2.4 7.2 2.4 6 Z"/><ellipse cx="5.3" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/><ellipse cx="8.7" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/></svg></span>
+                  <span class="pct">— —</span>
+                </span>
+              </div>
+            </div>
+            <div class="row-note">Detail view auto-opens</div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============== TOOLTIPS ============== -->
+      <section>
+        <div class="section-h">Hover Tooltip</div>
+        <div class="tt-stage">
+
+          <div class="tt-col">
+            <div class="tt-label">A · Healthy hover</div>
+            <div class="tt-bar-wrap">
+              <div class="bar">
+                <span class="provider ok target">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 0 C 7 3.9 10.1 7 14 7 C 10.1 7 7 10.1 7 14 C 7 10.1 3.9 7 0 7 C 3.9 7 7 3.9 7 0 Z" fill="currentColor"/></svg></span>
+                  <span class="pct">78%</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider ok">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><g transform="translate(7 7)"><ellipse cx="0" cy="0" rx="5.8" ry="2.15"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(60)"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(-60)"/></g></svg></span>
+                  <span class="pct">45%</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider ok">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.4 V 4.1"/><path d="M9.5 2.4 V 4.1"/><path d="M2.4 6 C 2.4 4.6 3.5 4 5 4 H 9 C 10.5 4 11.6 4.6 11.6 6 C 11.6 7.2 11 7.7 10.7 8 C 11 8.3 11.6 8.8 11.6 10 C 11.6 11.5 10.4 12 9 12 H 5 C 3.6 12 2.4 11.5 2.4 10 C 2.4 8.8 3 8.3 3.3 8 C 3 7.7 2.4 7.2 2.4 6 Z"/><ellipse cx="5.3" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/><ellipse cx="8.7" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/></svg></span>
+                  <span class="pct">92%</span>
+                </span>
+              </div>
+              <div class="tooltip">
+                <div class="tt-title">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 0 C 7 3.9 10.1 7 14 7 C 10.1 7 7 10.1 7 14 C 7 10.1 3.9 7 0 7 C 3.9 7 7 3.9 7 0 Z" fill="currentColor"/></svg></span>
+                  <span class="name">Claude</span>
+                  <span class="plan">Max 5×</span>
+                </div>
+                <div class="tt-rows">
+                  <div class="tt-k">Remaining</div><div class="tt-v ok">78% · 156k tok</div>
+                  <div class="tt-k">Used this cycle</div><div class="tt-v">44k / 200k</div>
+                  <div class="tt-k">Model</div><div class="tt-v">claude-sonnet-4-5</div>
+                  <div class="tt-k">Resets</div><div class="tt-v">in 3h 42m · 17:00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tt-col">
+            <div class="tt-label">B · Rate-limit / auth-expired</div>
+            <div class="tt-bar-wrap">
+              <div class="bar">
+                <span class="provider ok">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none"><path d="M7 0 C 7 3.9 10.1 7 14 7 C 10.1 7 7 10.1 7 14 C 7 10.1 3.9 7 0 7 C 3.9 7 7 3.9 7 0 Z" fill="currentColor"/></svg></span>
+                  <span class="pct">78%</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider expired target">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><g transform="translate(7 7)"><ellipse cx="0" cy="0" rx="5.8" ry="2.15"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(60)"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(-60)"/></g></svg></span>
+                  <span class="pct">— —</span>
+                </span>
+                <span class="sep"></span>
+                <span class="provider ok">
+                  <span class="icon"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.4 V 4.1"/><path d="M9.5 2.4 V 4.1"/><path d="M2.4 6 C 2.4 4.6 3.5 4 5 4 H 9 C 10.5 4 11.6 4.6 11.6 6 C 11.6 7.2 11 7.7 10.7 8 C 11 8.3 11.6 8.8 11.6 10 C 11.6 11.5 10.4 12 9 12 H 5 C 3.6 12 2.4 11.5 2.4 10 C 2.4 8.8 3 8.3 3.3 8 C 3 7.7 2.4 7.2 2.4 6 Z"/><ellipse cx="5.3" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/><ellipse cx="8.7" cy="7.8" rx="0.5" ry="0.95" fill="currentColor" stroke="none"/></svg></span>
+                  <span class="pct">92%</span>
+                </span>
+              </div>
+              <div class="tooltip banner-err" style="margin-left: 92px;">
+                <div class="tt-banner">
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" width="11" height="11"><circle cx="6" cy="6" r="4.5"/><path d="M6 4 V6.5"/><circle cx="6" cy="8" r="0.4" fill="currentColor"/></svg>
+                  Re-login required
+                </div>
+                <div class="tt-title" style="margin-bottom: 4px;">
+                  <span class="icon" style="color: var(--dim);"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><g transform="translate(7 7)"><ellipse cx="0" cy="0" rx="5.8" ry="2.15"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(60)"/><ellipse cx="0" cy="0" rx="5.8" ry="2.15" transform="rotate(-60)"/></g></svg></span>
+                  <span class="name">Codex</span>
+                  <span class="plan">Plus</span>
+                </div>
+                <div class="tt-rows">
+                  <div class="tt-k">Status</div><div class="tt-v err">401 · token expired</div>
+                  <div class="tt-k">Last known</div><div class="tt-v dim">45% · 2h ago</div>
+                </div>
+                <div class="tt-divider"></div>
+                <div class="tt-foot">
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6 H10"/><path d="M7 3 L10 6 L7 9"/></svg>
+                  Click to open auth panel
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT COLUMN — spec/palette/rationale -->
+    <aside>
+
+      <div class="card">
+        <div class="card-h">Bar spec</div>
+        <ul class="spec-list">
+          <li>Height <b>32 px</b></li>
+          <li>Min width <b>~228 px</b></li>
+          <li>Padding (x) <b>12 px</b></li>
+          <li>Item gap <b>14 px</b></li>
+          <li>Icon size <b>14 px</b></li>
+          <li>Font size <b>12 / 600</b></li>
+          <li>Radius <b>10 px</b></li>
+          <li>Border <b>1 px · 7 %</b></li>
+          <li>Backdrop <b>blur 24 · 74 %</b></li>
+          <li>Shadow <b>0 12 32 / 55 %</b></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-h">Tooltip spec</div>
+        <ul class="spec-list">
+          <li>Offset from bar <b>10 px</b></li>
+          <li>Padding <b>10 × 12</b></li>
+          <li>Min width <b>200 px</b></li>
+          <li>Radius <b>8 px</b></li>
+          <li>Font <b>11.5 / 1.5</b></li>
+          <li>Arrow size <b>9 px ◇</b></li>
+          <li>Delay (hover) <b>250 ms</b></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-h">Palette · dark</div>
+        <div class="palette">
+          <div class="swatch"><div class="chip" style="background:#0a0d10;"></div><div class="name">bg / page</div><div class="hex">#0A0D10</div></div>
+          <div class="swatch"><div class="chip" style="background:#14181c;"></div><div class="name">bg / card</div><div class="hex">#14181C</div></div>
+          <div class="swatch"><div class="chip" style="background:rgba(20,24,28,0.74);backdrop-filter:blur(8px);background-image:linear-gradient(135deg, rgba(141,198,63,0.05), rgba(56,79,95,0.10));"></div><div class="name">bar / acrylic</div><div class="hex">#14181C · 74%</div></div>
+          <div class="swatch"><div class="chip" style="background:#1c2126;"></div><div class="name">tooltip</div><div class="hex">#1C2126 · 96%</div></div>
+          <div class="swatch"><div class="chip" style="background:#e8eaed;"></div><div class="name">fg / 1</div><div class="hex">#E8EAED</div></div>
+          <div class="swatch"><div class="chip" style="background:#a3acb4;"></div><div class="name">fg / 2</div><div class="hex">#A3ACB4</div></div>
+          <div class="swatch"><div class="chip" style="background:#6b7480;"></div><div class="name">fg / 3</div><div class="hex">#6B7480</div></div>
+          <div class="swatch"><div class="chip" style="background:#4b525a;"></div><div class="name">fg / dim</div><div class="hex">#4B525A</div></div>
+          <div class="swatch"><div class="chip" style="background:#8DC63F;"></div><div class="name">accent · OK</div><div class="hex">#8DC63F</div></div>
+          <div class="swatch"><div class="chip" style="background:#f5a623;"></div><div class="name">warning</div><div class="hex">#F5A623</div></div>
+          <div class="swatch"><div class="chip" style="background:#f04438;"></div><div class="name">error</div><div class="hex">#F04438</div></div>
+          <div class="swatch"><div class="chip" style="background:rgba(255,255,255,0.07);border-color: rgba(255,255,255,0.12);"></div><div class="name">border</div><div class="hex">#FFFFFF · 7%</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">Why these choices</div>
+        <div class="rationale">
+          <p><strong>One accent, status semantics.</strong> All three providers share <code>#8DC63F</code> (SELVAS green) when healthy — the eye scans the bar for any <em>non-green</em>, which always means "look here." Per-provider brand colors would dilute that signal.</p>
+          <p><strong>32 px height.</strong> Tighter than the Win 11 taskbar (48 px) so the bar reads as ambient HUD, not a second taskbar. Three providers fit in <strong>~228 px</strong> — a footprint that disappears against a 1440px-wide app.</p>
+          <p><strong>Acrylic, not opaque.</strong> 74 % fill + 24 px backdrop blur matches Win 11 Mica. The bar inherits whatever's behind it, so it never looks "stuck on" a dark IDE or a bright browser.</p>
+          <p><strong>Reset time off the bar.</strong> Per spec — % changes every poll, reset time changes hourly. Constant info on the bar; occasional info on hover. Less to ignore.</p>
+          <p><strong>Dim, don't hide, on auth-expired.</strong> Opacity 0.55 + "— —" keeps the layout stable. A disappearing slot would make the bar feel broken, which is the exact problem we're trying to fix.</p>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <footer>
+    <span>Pretendard · JetBrains Mono · ⌘ SELVAS AI palette</span>
+    <span style="margin-left:auto">→ continue to <a href="detail-mockup.html">Detail View</a></span>
+  </footer>
+
+</div>
+</body>
+</html>
