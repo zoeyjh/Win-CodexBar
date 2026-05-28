@@ -1,0 +1,85 @@
+body.floatbar-window {
+  margin: 0;
+  background: transparent;
+}
+
+.floatbar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  background: rgba(20, 24, 28, 0.74);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  font-family: "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  color: #e8eaed;
+  user-select: none;
+}
+
+.floatbar__pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e8eaed;
+}
+
+.floatbar__pill--dim {
+  color: #4b525a;
+}
+
+.floatbar__pill--warn {
+  color: #f5a623;
+}
+
+.floatbar__icon {
+  display: block;
+  flex: 0 0 auto;
+  color: var(--provider-color);
+}
+
+.floatbar__pill--dim .floatbar__icon,
+.floatbar__pill--warn .floatbar__icon {
+  color: currentColor;
+}
+
+.floatbar__percent {
+  display: inline-block;
+  min-width: 2.8ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.floatbar__tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 1;
+  display: flex;
+  min-width: 180px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  background: rgba(28, 33, 38, 0.96);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  white-space: nowrap;
+}
+
+.floatbar__tooltip-title {
+  color: #e8eaed;
+}
+
+.floatbar__tooltip-line {
+  color: #e8eaed;
+  opacity: 0.86;
+}
