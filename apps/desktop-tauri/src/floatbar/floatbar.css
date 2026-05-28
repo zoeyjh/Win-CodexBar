@@ -10,6 +10,12 @@ html.floatbar-window-root {
 
 body.floatbar-window {
   background-color: transparent !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+  overflow: visible;
 }
 
 .floatbar {

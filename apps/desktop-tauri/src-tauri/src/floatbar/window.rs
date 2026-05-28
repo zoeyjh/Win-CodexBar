@@ -10,8 +10,8 @@ use crate::bar::window_state::{WindowRect, WindowState};
 
 pub const FLOATBAR_LABEL: &str = "floatbar";
 pub const FLOAT_BAR_CONFIG_CHANGED_EVENT: &str = "float-bar-config-changed";
-const FLOATBAR_DEFAULT_WIDTH_H: f64 = 360.0;
-const FLOATBAR_DEFAULT_HEIGHT_H: f64 = 36.0;
+const FLOATBAR_DEFAULT_WIDTH_H: f64 = 380.0;
+const FLOATBAR_DEFAULT_HEIGHT_H: f64 = 220.0;
 const FLOATBAR_DEFAULT_WIDTH_V: f64 = 80.0;
 const FLOATBAR_DEFAULT_HEIGHT_V: f64 = 280.0;
 
@@ -95,7 +95,10 @@ pub fn show(
             saved.clamp_to_work_area((pos.x, pos.y, size.width, size.height));
         }
 
-        let _ = win.set_position(LogicalPosition::new(saved.rect.x as f64, saved.rect.y as f64));
+        let _ = win.set_position(LogicalPosition::new(
+            saved.rect.x as f64,
+            saved.rect.y as f64,
+        ));
         let _ = win.set_size(LogicalSize::new(saved.rect.w as f64, saved.rect.h as f64));
     } else if let Ok(Some(monitor)) = win.primary_monitor() {
         let scale = win.scale_factor().unwrap_or(1.0);
