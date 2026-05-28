@@ -236,3 +236,122 @@ pub fn shortcut_panel_position(app: &AppHandle) -> Option<(i32, i32)> {
         scale,
     ))
 }
+
+/// Anchor the Detail view at the bottom-right corner of the monitor that
+/// currently hosts the FloatBar window. Falls back to the main window's
+/// primary monitor if the FloatBar isn't open. Returns physical coordinates.
+pub fn detail_view_anchor_position(app: &AppHandle) -> Option<(i32, i32)> {
+    let monitor = app
+        .get_webview_window(crate::floatbar::FLOATBAR_LABEL)
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .or_else(|| {
+            app.get_webview_window("main")
+                .and_then(|w| w.current_monitor().ok().flatten())
+        })
+        .or_else(|| {
+            app.get_webview_window("main")
+                .and_then(|w| w.primary_monitor().ok().flatten())
+        })
+        .map(|monitor| monitor_placement(&monitor))?;
+
+    Some(detail_view_bottom_right_position(&monitor))
+}
+
+/// Position the Detail View at bottom-right of the monitor containing `cursor`.
+/// Falls back to `detail_view_anchor_position` if the cursor monitor cannot be resolved.
+pub fn cursor_anchored_popout_position(app: &AppHandle, cursor: (i32, i32)) -> Option<(i32, i32)> {
+    let window = app.get_webview_window("main")?;
+    let monitors = window.available_monitors().ok()?;
+    let placements: Vec<_> = monitors.iter().map(monitor_placement).collect();
+    let current_monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .map(|monitor| monitor_placement(&monitor));
+
+    cursor_anchored_popout_position_with_fallbacks(cursor, Some(&placements), current_monitor)
+}
+
+fn cursor_anchored_popout_position_with_fallbacks(
+    cursor: (i32, i32),
+    monitor_placements: Option<&[MonitorPlacement]>,
+    current_monitor: Option<MonitorPlacement>,
+) -> Option<(i32, i32)> {
+    let monitor = monitor_placements
+        .and_then(|placements| monitor_placement_containing_point(placements, cursor.0, cursor.1))
+        .or(current_monitor)?;
+
+    Some(detail_view_bottom_right_position(&monitor))
+}
+
+fn detail_view_bottom_right_position(monitor: &MonitorPlacement) -> (i32, i32) {
+    const DETAIL_WIDTH_LOGICAL: f64 = 480.0;
+    const DETAIL_INNER_HEIGHT_LOGICAL: f64 = 460.0;
+    const TITLE_BAR_LOGICAL: f64 = 32.0;
+    const PADDING_LOGICAL: f64 = 12.0;
+
+    let scale = monitor.scale_factor;
+    let wa = &monitor.work_area;
+
+    let detail_w = (DETAIL_WIDTH_LOGICAL * scale) as i32;
+    let detail_outer_h = ((DETAIL_INNER_HEIGHT_LOGICAL + TITLE_BAR_LOGICAL) * scale) as i32;
+    let pad = (PADDING_LOGICAL * scale) as i32;
+
+    let right = wa.x + wa.width as i32;
+    let bottom = wa.y + wa.height as i32;
+
+    let x = right - detail_w - pad;
+    let y = bottom - detail_outer_h - pad;
+    (x, y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::window_positioner::Rect;
+
+    fn placement(x: i32, y: i32, width: u32, height: u32, scale_factor: f64) -> MonitorPlacement {
+        MonitorPlacement {
+            bounds: Rect {
+                x,
+                y,
+                width,
+                height,
+            },
+            work_area: Rect {
+                x,
+                y,
+                width,
+                height,
+            },
+            scale_factor,
+        }
+    }
+
+    #[test]
+    fn cursor_anchored_popout_position_uses_monitor_containing_cursor() {
+        let primary_monitor = placement(0, 0, 1920, 1040, 1.0);
+        let cursor_monitor = placement(1920, 0, 1920, 1040, 1.25);
+
+        let position = cursor_anchored_popout_position_with_fallbacks(
+            (2500, 500),
+            Some(&[primary_monitor, cursor_monitor]),
+            Some(primary_monitor),
+        );
+
+        assert_eq!(position, Some((3225, 410)));
+    }
+
+    #[test]
+    fn cursor_anchored_popout_position_falls_back_to_current_monitor() {
+        let current_monitor = placement(0, 0, 1920, 1040, 1.0);
+
+        let position = cursor_anchored_popout_position_with_fallbacks(
+            (9999, 9999),
+            Some(&[current_monitor]),
+            Some(current_monitor),
+        );
+
+        assert_eq!(position, Some((1428, 536)));
+    }
+}

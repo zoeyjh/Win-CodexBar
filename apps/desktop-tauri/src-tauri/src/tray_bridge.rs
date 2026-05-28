@@ -215,8 +215,10 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 let app = tray.app_handle();
                 store_anchor(app, &rect, position);
                 if button == MouseButton::Left {
-                    let position = shell::tray_panel_position(app);
-                    shell::toggle_tray_panel(app, position);
+                    let cursor = (position.x as i32, position.y as i32);
+                    let pos = shell::cursor_anchored_popout_position(app, cursor)
+                        .or_else(|| shell::detail_view_anchor_position(app));
+                    let _ = shell::toggle_detail_view(app, pos);
                 }
             }
         })
@@ -232,7 +234,7 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 fn handle_menu_event(app: &AppHandle, id: &str) {
     match resolve_menu_action(id) {
         Some(MenuAction::ToggleDetail) => {
-            let position = shell::tray_panel_position(app);
+            let position = shell::detail_view_anchor_position(app);
             let _ = shell::toggle_detail_view(app, position);
         }
         Some(MenuAction::ToggleBarVisibility) => {

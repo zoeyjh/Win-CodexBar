@@ -16,8 +16,16 @@ pub fn set_surface_mode(
 }
 
 #[tauri::command]
-pub fn toggle_detail(app: tauri::AppHandle) -> Result<(), String> {
-    crate::shell::toggle_detail_view(&app, None)
+pub fn toggle_detail(
+    app: tauri::AppHandle,
+    cursor_x: Option<i32>,
+    cursor_y: Option<i32>,
+) -> Result<(), String> {
+    let position = match (cursor_x, cursor_y) {
+        (Some(x), Some(y)) => crate::shell::cursor_anchored_popout_position(&app, (x, y)),
+        _ => None,
+    };
+    crate::shell::toggle_detail_view(&app, position)
 }
 
 /// Open (or focus) a detached Settings/About window.
