@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { emitCachedUsageUpdates } from "../lib/tauri";
 import type { BootstrapState } from "../types/bridge";
 import { USAGE_PROVIDERS, type UsageProvider, type UsageSnapshot } from "../types/usage";
 import ProviderPill from "./ProviderPill";
@@ -32,6 +33,7 @@ export default function FloatBar({ state: _state }: { state: BootstrapState }) {
         [event.payload.provider]: event.payload,
       }));
     });
+    void emitCachedUsageUpdates().catch(() => {});
 
     return () => {
       void unlisten.then((stopListening) => stopListening()).catch(() => {});

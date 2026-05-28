@@ -14,6 +14,11 @@ use codexbar::core::{
 use codexbar::host::session::launch_block_reason;
 use codexbar::settings::{ApiKeys, Language, ManualCookies, Settings};
 
+use crate::usage_bridge::{
+    UsagePollStatus, classify_provider_error, should_append_usage_history,
+    usage_snapshot_from_provider, usage_snapshot_from_status,
+};
+
 #[test]
 fn validate_surface_target_accepts_matching_target() {
     let target = validate_surface_target(
@@ -99,6 +104,16 @@ fn bootstrap_contract_lists_surface_mode_changed_event() {
         .collect::<Vec<_>>();
 
     assert!(ids.contains(&"surface-mode-changed"));
+}
+
+#[test]
+fn bootstrap_contract_lists_usage_update_event() {
+    let ids = bridge_events()
+        .into_iter()
+        .map(|descriptor| descriptor.id)
+        .collect::<Vec<_>>();
+
+    assert!(ids.contains(&"usage:update"));
 }
 
 #[test]
@@ -638,6 +653,108 @@ fn provider_cache_upsert_replaces_existing_provider() {
     assert_eq!(cache.len(), 1);
     assert_eq!(cache[0].provider_id, "codex");
     assert_eq!(cache[0].error.as_deref(), Some("new"));
+}
+
+#[test]
+fn usage_snapshot_from_provider_maps_primary_window() {
+    let metadata = instantiate_provider(ProviderId::Claude).metadata().clone();
+    let mut usage = codexbar::core::UsageSnapshot::new(codexbar::core::RateWindow::new(22.0));
+    usage.primary.resets_at = Some(chrono::Utc::now() + chrono::Duration::hours(2));
+    usage.login_method = Some("Pro".to_string());
+    let result = ProviderFetchResult {
+        usage,
+        cost: None,
+        source_label: "OAuth".to_string(),
+    };
+
+    let snapshot = ProviderUsageSnapshot::from_fetch_result(ProviderId::Claude, &metadata, &result);
+    let usage_snapshot = usage_snapshot_from_provider(&snapshot);
+
+    assert_eq!(usage_snapshot.provider, "claude");
+    assert_eq!(usage_snapshot.plan.as_deref(), Some("Pro"));
+    assert_eq!(usage_snapshot.unit, "percent");
+    assert_eq!(usage_snapshot.used, Some(22.0));
+    assert_eq!(usage_snapshot.limit, Some(100.0));
+    assert_eq!(usage_snapshot.remaining_pct, Some(78.0));
+    assert_eq!(usage_snapshot.status, "ok");
+    assert_eq!(usage_snapshot.confidence, "high");
+    assert_eq!(usage_snapshot.last_success_at, snapshot.updated_at);
+}
+
+#[test]
+fn usage_snapshot_from_status_clears_metrics_for_auth_expired() {
+    let previous = crate::usage_bridge::UsageUpdateSnapshot {
+        provider: "copilot".to_string(),
+        plan: Some("Individual".to_string()),
+        unit: "percent".to_string(),
+        used: Some(37.0),
+        limit: Some(100.0),
+        remaining_pct: Some(63.0),
+        reset_at: Some("2026-05-28T12:30:00Z".to_string()),
+        status: "ok".to_string(),
+        last_success_at: "2026-05-28T09:00:00Z".to_string(),
+        confidence: "high".to_string(),
+    };
+
+    let snapshot = usage_snapshot_from_status(
+        "copilot",
+        UsagePollStatus::AuthExpired,
+        Some(&previous),
+        "2026-05-28T10:00:00Z",
+    );
+
+    assert_eq!(snapshot.status, "auth_expired");
+    assert_eq!(snapshot.remaining_pct, None);
+    assert_eq!(snapshot.used, None);
+    assert_eq!(snapshot.limit, None);
+    assert_eq!(snapshot.reset_at, None);
+    assert_eq!(snapshot.last_success_at, "2026-05-28T09:00:00Z");
+    assert_eq!(snapshot.confidence, "cached");
+}
+
+#[test]
+fn classify_provider_error_detects_rate_limits_and_auth() {
+    assert_eq!(
+        classify_provider_error(&codexbar::core::ProviderError::Other(
+            "GitHub Copilot usage endpoint returned 429".to_string(),
+        )),
+        UsagePollStatus::RateLimited
+    );
+    assert_eq!(
+        classify_provider_error(&codexbar::core::ProviderError::AuthRequired),
+        UsagePollStatus::AuthExpired
+    );
+    assert_eq!(
+        classify_provider_error(&codexbar::core::ProviderError::Other(
+            "Codex API returned 503".to_string(),
+        )),
+        UsagePollStatus::Network
+    );
+}
+
+#[test]
+fn usage_history_is_only_appended_when_metrics_exist() {
+    let with_metrics = crate::usage_bridge::UsageUpdateSnapshot {
+        provider: "claude".to_string(),
+        plan: None,
+        unit: "percent".to_string(),
+        used: Some(25.0),
+        limit: Some(100.0),
+        remaining_pct: Some(75.0),
+        reset_at: None,
+        status: "ok".to_string(),
+        last_success_at: "2026-05-28T09:00:00Z".to_string(),
+        confidence: "high".to_string(),
+    };
+    let without_metrics = usage_snapshot_from_status(
+        "claude",
+        UsagePollStatus::AuthExpired,
+        Some(&with_metrics),
+        "2026-05-28T10:00:00Z",
+    );
+
+    assert!(should_append_usage_history(&with_metrics));
+    assert!(!should_append_usage_history(&without_metrics));
 }
 
 #[test]

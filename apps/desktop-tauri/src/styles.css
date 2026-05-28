@@ -1,3 +1,35 @@
+@font-face {
+  font-family: "Pretendard";
+  src: url("./assets/fonts/Pretendard-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("./assets/fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./assets/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./assets/fonts/JetBrainsMono-Medium.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
 /*
  * Theme tokens (Phase 12).
  *
@@ -16,7 +48,7 @@
      when the host font is available; Inter / Segoe UI remain as the
      Windows fallbacks. */
   font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro",
+    "Pretendard", -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro",
     "Segoe UI Variable", Inter, "Segoe UI", system-ui, sans-serif;
   /* Force macOS-style thin font rendering instead of Windows ClearType
      heavy strokes. WebView2 (Chromium) respects this. */

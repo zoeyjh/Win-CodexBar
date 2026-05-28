@@ -15,7 +15,12 @@ const eventMocks = vi.hoisted(() => ({
 }));
 
 const coreMocks = vi.hoisted(() => ({
-  invoke: vi.fn().mockResolvedValue(undefined),
+  invoke: vi.fn().mockImplementation((command: string) => {
+    if (command === "emit_cached_usage_updates") {
+      return Promise.resolve(undefined);
+    }
+    return Promise.resolve(undefined);
+  }),
 }));
 
 const windowInstance = {
@@ -76,6 +81,7 @@ describe("FloatBar", () => {
     const { container } = render(<FloatBar state={bootstrap()} />);
 
     expect(eventMocks.listen).toHaveBeenCalledWith("usage:update", expect.any(Function));
+    expect(coreMocks.invoke).toHaveBeenCalledWith("emit_cached_usage_updates");
     expect(container.querySelectorAll(".floatbar__pill")).toHaveLength(3);
     expect(screen.getAllByText("--")).toHaveLength(3);
 
@@ -142,7 +148,8 @@ describe("FloatBar", () => {
 
     fireEvent.mouseUp(bar!, { clientX: 20, clientY: 10, button: 0 });
     await Promise.resolve();
-    expect(coreMocks.invoke).toHaveBeenCalledTimes(1);
+    const toggleCalls = coreMocks.invoke.mock.calls.filter(([command]) => command === "toggle_detail");
+    expect(toggleCalls).toHaveLength(1);
   });
 
   it("prevents the default context menu", () => {

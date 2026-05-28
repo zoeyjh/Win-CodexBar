@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { emitCachedUsageUpdates } from "../lib/tauri";
 import type { BootstrapState } from "../types/bridge";
 import { USAGE_PROVIDERS, type UsageProvider, type UsageSnapshot } from "../types/usage";
 import { DETAIL_PROVIDER_META, formatProviderPercent } from "./detailShared";
@@ -43,6 +44,7 @@ export default function DetailView({
         [event.payload.provider]: event.payload,
       }));
     });
+    void emitCachedUsageUpdates().catch(() => {});
 
     return () => {
       void unlisten.then((stopListening) => stopListening()).catch(() => {});

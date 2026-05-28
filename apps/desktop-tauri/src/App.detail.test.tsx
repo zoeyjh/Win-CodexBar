@@ -12,12 +12,17 @@ const tauriMocks = vi.hoisted(() => ({
   getCachedProviders: vi.fn(),
   refreshProviders: vi.fn(),
   refreshProvidersIfStale: vi.fn(),
+  emitCachedUsageUpdates: vi.fn(),
   getUpdateState: vi.fn(),
   openSettingsWindow: vi.fn(),
   quitApp: vi.fn(),
   getProviderChartData: vi.fn(),
   getUsageHistory: vi.fn(),
   getProviderSessions: vi.fn(),
+  getApiKeys: vi.fn(),
+  getManualCookies: vi.fn(),
+  getTokenAccountProviders: vi.fn(),
+  getTokenAccounts: vi.fn(),
 }));
 
 const eventMocks = vi.hoisted(() => ({
@@ -62,10 +67,12 @@ describe("App detail surface", () => {
     });
     tauriMocks.getSettingsSnapshot.mockResolvedValue({ theme: "dark" });
     tauriMocks.checkForUpdates.mockResolvedValue(undefined);
+    tauriMocks.setSurfaceMode.mockResolvedValue(undefined);
     tauriMocks.getLocaleStrings.mockResolvedValue(buildBundle());
     tauriMocks.getCachedProviders.mockResolvedValue([]);
     tauriMocks.refreshProviders.mockResolvedValue(undefined);
     tauriMocks.refreshProvidersIfStale.mockResolvedValue(undefined);
+    tauriMocks.emitCachedUsageUpdates.mockResolvedValue(undefined);
     tauriMocks.getUpdateState.mockResolvedValue({
       status: "idle",
       version: null,
@@ -76,6 +83,10 @@ describe("App detail surface", () => {
       canApply: false,
       lastCheckedAt: null,
     });
+    tauriMocks.getApiKeys.mockResolvedValue([]);
+    tauriMocks.getManualCookies.mockResolvedValue([]);
+    tauriMocks.getTokenAccountProviders.mockResolvedValue([]);
+    tauriMocks.getTokenAccounts.mockResolvedValue({ accounts: [] });
     tauriMocks.getProviderChartData.mockResolvedValue({
       providerId: "claude",
       costHistory: [],
@@ -107,5 +118,13 @@ describe("App detail surface", () => {
     });
     expect(screen.getByText("Sessions")).toBeInTheDocument();
     expect(screen.getByText("Next Reset")).toBeInTheDocument();
+  });
+
+  it("opens the detail view on first run when no provider credentials exist", async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(tauriMocks.setSurfaceMode).toHaveBeenCalledWith("popOut", { kind: "dashboard" });
+    });
   });
 });

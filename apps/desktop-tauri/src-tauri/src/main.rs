@@ -15,6 +15,7 @@ mod surface;
 mod surface_target;
 mod tray_bridge;
 mod tray_menu;
+mod usage_bridge;
 mod window_positioner;
 
 use std::sync::Mutex;
@@ -58,6 +59,8 @@ fn main() {
 
     let mut initial_state = AppState::new();
     initial_state.proof_config = proof_config;
+    initial_state.persisted_usage_cache = commands::load_persisted_usage_cache();
+    initial_state.usage_cache = initial_state.persisted_usage_cache.clone();
 
     let (bar_lifecycle_tx, _) =
         tokio::sync::broadcast::channel::<bar::lifecycle_event::TimestampedEvent>(256);
@@ -93,6 +96,7 @@ fn main() {
             commands::run_proof_command,
             commands::refresh_providers,
             commands::refresh_providers_if_stale,
+            commands::emit_cached_usage_updates,
             commands::get_cached_providers,
             commands::get_safe_diagnostics,
             commands::get_credential_storage_status,
@@ -170,6 +174,7 @@ fn main() {
 
             tray_bridge::setup(app)?;
             shortcut_bridge::register(app.handle());
+            commands::spawn_usage_poller(app.handle().clone());
 
             let persisted = codexbar::settings::Settings::load();
             let startup_command = if persisted.float_bar_enabled {

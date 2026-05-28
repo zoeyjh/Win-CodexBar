@@ -1,6 +1,13 @@
-use super::*;
+use std::time::Duration;
 
-// ── Provider refresh commands ────────────────────────────────────────
+use super::*;
+use crate::usage_bridge::{
+    UsagePollStatus, UsageUpdateSnapshot, append_usage_history, classify_provider_error,
+    load_usage_cache, save_usage_cache, upsert_usage_cache, usage_snapshot_from_provider,
+    usage_snapshot_from_status,
+};
+
+// Provider refresh commands
 
 /// Build a `FetchContext` for a provider using persisted cookies/keys.
 pub(crate) fn build_fetch_context(
@@ -86,6 +93,7 @@ pub(crate) fn build_fetch_context(
 
 const SLOW_PROVIDER_FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(75);
 const MAX_CONTEXT_FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(65);
+const DISABLED_PROVIDER_POLL_INTERVAL: Duration = Duration::from_secs(30);
 
 pub(crate) fn provider_fetch_timeout(_id: ProviderId, ctx: &FetchContext) -> std::time::Duration {
     let provider_timeout = SLOW_PROVIDER_FETCH_TIMEOUT;
@@ -113,6 +121,104 @@ pub(crate) fn upsert_provider_cache(
         *existing = snapshot;
     } else {
         cache.push(snapshot);
+    }
+}
+
+struct ProviderFetchEnvelope {
+    snapshot: ProviderUsageSnapshot,
+    status: UsagePollStatus,
+}
+
+struct ProviderPollerState {
+    rate_limit_backoff: crate::bar::backoff::BackoffPolicy,
+    server_error_backoff: crate::bar::backoff::BackoffPolicy,
+    base_interval: Duration,
+}
+
+impl ProviderPollerState {
+    fn new(base_interval: Duration) -> Self {
+        Self {
+            rate_limit_backoff: crate::bar::backoff::rate_limit_backoff(),
+            server_error_backoff: crate::bar::backoff::server_error_backoff(base_interval),
+            base_interval,
+        }
+    }
+
+    fn sync_interval(&mut self, base_interval: Duration) {
+        if self.base_interval != base_interval {
+            self.base_interval = base_interval;
+            self.server_error_backoff = crate::bar::backoff::server_error_backoff(base_interval);
+        }
+    }
+
+    fn next_delay(&mut self, status: UsagePollStatus) -> Option<Duration> {
+        match status {
+            UsagePollStatus::Ok => {
+                self.rate_limit_backoff.reset();
+                self.server_error_backoff.reset();
+                Some(self.base_interval)
+            }
+            UsagePollStatus::RateLimited => Some(self.rate_limit_backoff.next_delay()),
+            UsagePollStatus::Network => Some(self.server_error_backoff.next_delay()),
+            UsagePollStatus::Unknown => Some(self.base_interval),
+            UsagePollStatus::AuthExpired => None,
+        }
+    }
+}
+
+pub(crate) fn load_persisted_usage_cache() -> Vec<UsageUpdateSnapshot> {
+    load_usage_cache().unwrap_or_else(|error| {
+        tracing::warn!(%error, "failed to load usage cache");
+        Vec::new()
+    })
+}
+
+fn provider_poll_interval(settings: &Settings) -> Duration {
+    Duration::from_secs(settings.refresh_interval_secs.max(30))
+}
+
+pub(crate) fn spawn_usage_poller(app: tauri::AppHandle) {
+    for id in ProviderId::all() {
+        let app_handle = app.clone();
+        let provider_id = *id;
+        tauri::async_runtime::spawn(async move {
+            provider_poll_loop(app_handle, provider_id).await;
+        });
+    }
+}
+
+async fn provider_poll_loop(app: tauri::AppHandle, id: ProviderId) {
+    let mut poller = ProviderPollerState::new(provider_poll_interval(&Settings::load()));
+
+    loop {
+        let inputs = ProviderRefreshInputs::load();
+        let base_interval = provider_poll_interval(&inputs.settings);
+        poller.sync_interval(base_interval);
+
+        if !inputs.enabled_ids.contains(&id) {
+            tokio::time::sleep(DISABLED_PROVIDER_POLL_INTERVAL).await;
+            continue;
+        }
+
+        let ctx = build_fetch_context(
+            id,
+            &inputs.settings,
+            &inputs.manual_cookies,
+            &inputs.api_keys,
+            &inputs.token_accounts,
+        );
+
+        let status = refresh_provider(app.clone(), id, ctx).await;
+        let state = app.state::<Mutex<AppState>>();
+        if let Err(error) = update_tray_and_notifications(&app, &state, &inputs.settings) {
+            tracing::warn!(%error, provider = id.cli_name(), "failed to update tray after provider poll");
+        }
+
+        let Some(delay) = poller.next_delay(status) else {
+            tracing::warn!(provider = id.cli_name(), "stopping automatic polling after auth-expired response");
+            break;
+        };
+        tokio::time::sleep(delay).await;
     }
 }
 
@@ -221,43 +327,114 @@ fn spawn_provider_refreshes(
         );
 
         handles.push(tokio::spawn(async move {
-            refresh_provider(app_handle, id, ctx).await;
+            let _ = refresh_provider(app_handle, id, ctx).await;
         }));
     }
 
     handles
 }
 
-async fn refresh_provider(app: tauri::AppHandle, id: ProviderId, ctx: FetchContext) {
-    let snapshot = fetch_provider_snapshot(id, ctx).await;
-    events::emit_provider_updated(&app, &snapshot);
+async fn refresh_provider(app: tauri::AppHandle, id: ProviderId, ctx: FetchContext) -> UsagePollStatus {
+    let envelope = fetch_provider_snapshot(id, ctx).await;
+    let observed_at = envelope.snapshot.updated_at.clone();
 
-    let state = app.state::<Mutex<AppState>>();
-    if let Ok(mut guard) = state.lock() {
-        upsert_provider_cache(&mut guard.provider_cache, snapshot);
+    let (usage_snapshot, persisted_cache) = {
+        let state = app.state::<Mutex<AppState>>();
+        if let Ok(mut guard) = state.lock() {
+            let previous = guard
+                .usage_cache
+                .iter()
+                .find(|snapshot| snapshot.provider == envelope.snapshot.provider_id)
+                .cloned();
+            let usage_snapshot = match envelope.status {
+                UsagePollStatus::Ok => usage_snapshot_from_provider(&envelope.snapshot),
+                status => usage_snapshot_from_status(
+                    &envelope.snapshot.provider_id,
+                    status,
+                    previous.as_ref(),
+                    &observed_at,
+                ),
+            };
+
+            upsert_provider_cache(&mut guard.provider_cache, envelope.snapshot.clone());
+            upsert_usage_cache(&mut guard.usage_cache, usage_snapshot.clone());
+            guard.provider_cache_updated_at = Some(std::time::Instant::now());
+
+            let persisted_cache = if envelope.status == UsagePollStatus::Ok {
+                upsert_usage_cache(&mut guard.persisted_usage_cache, usage_snapshot.clone());
+                Some(guard.persisted_usage_cache.clone())
+            } else {
+                None
+            };
+
+            (usage_snapshot, persisted_cache)
+        } else {
+            let usage_snapshot = match envelope.status {
+                UsagePollStatus::Ok => usage_snapshot_from_provider(&envelope.snapshot),
+                status => usage_snapshot_from_status(
+                    &envelope.snapshot.provider_id,
+                    status,
+                    None,
+                    &observed_at,
+                ),
+            };
+            (usage_snapshot, None)
+        }
+    };
+
+    events::emit_provider_updated(&app, &envelope.snapshot);
+    events::emit_usage_updated(&app, &usage_snapshot);
+
+    if let Some(cache) = persisted_cache
+        && let Err(error) = save_usage_cache(&cache)
+    {
+        tracing::warn!(%error, provider = id.cli_name(), "failed to persist usage cache");
     }
+    if crate::usage_bridge::should_append_usage_history(&usage_snapshot)
+        && let Err(error) = append_usage_history(&usage_snapshot, &observed_at)
+    {
+        tracing::warn!(%error, provider = id.cli_name(), "failed to append usage history");
+    }
+
+    envelope.status
 }
 
-async fn fetch_provider_snapshot(id: ProviderId, ctx: FetchContext) -> ProviderUsageSnapshot {
+async fn fetch_provider_snapshot(id: ProviderId, ctx: FetchContext) -> ProviderFetchEnvelope {
     let provider = instantiate_provider(id);
     let metadata = provider.metadata().clone();
     let started = std::time::Instant::now();
 
-    let mut snapshot =
-        match tokio::time::timeout(provider_fetch_timeout(id, &ctx), provider.fetch_usage(&ctx))
-            .await
-        {
-            Ok(Ok(result)) => ProviderUsageSnapshot::from_fetch_result(id, &metadata, &result),
-            Ok(Err(e)) => ProviderUsageSnapshot::from_error(
-                id,
-                &metadata,
-                codexbar::logging::safe_error_message(e),
-            ),
-            Err(_) => ProviderUsageSnapshot::from_error(id, &metadata, "Timeout".to_string()),
-        };
+    let (status, mut snapshot) = match tokio::time::timeout(
+        provider_fetch_timeout(id, &ctx),
+        provider.fetch_usage(&ctx),
+    )
+    .await
+    {
+        Ok(Ok(result)) => (
+            UsagePollStatus::Ok,
+            ProviderUsageSnapshot::from_fetch_result(id, &metadata, &result),
+        ),
+        Ok(Err(error)) => {
+            let status = classify_provider_error(&error);
+            let message = codexbar::logging::safe_error_message(error);
+            (
+                status,
+                ProviderUsageSnapshot::from_error(id, &metadata, message),
+            )
+        }
+        Err(_) => {
+            let error = codexbar::core::ProviderError::Timeout;
+            let status = classify_provider_error(&error);
+            let message = codexbar::logging::safe_error_message(error);
+            (
+                status,
+                ProviderUsageSnapshot::from_error(id, &metadata, message),
+            )
+        }
+    };
 
     record_provider_fetch_duration(id, &mut snapshot, started);
-    snapshot
+    ProviderFetchEnvelope { snapshot, status }
 }
 
 fn record_provider_fetch_duration(
@@ -343,6 +520,20 @@ pub async fn refresh_providers(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub async fn refresh_providers_if_stale(app: tauri::AppHandle) -> Result<(), String> {
     do_refresh_providers_if_stale(&app).await
+}
+
+#[tauri::command]
+pub fn emit_cached_usage_updates(app: tauri::AppHandle) -> Result<(), String> {
+    let cached = app
+        .state::<Mutex<AppState>>()
+        .lock()
+        .map_err(|e| e.to_string())?
+        .usage_cache
+        .clone();
+    for snapshot in &cached {
+        events::emit_usage_updated(&app, snapshot);
+    }
+    Ok(())
 }
 
 #[tauri::command]

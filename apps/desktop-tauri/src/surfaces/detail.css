@@ -17,6 +17,7 @@ body:has(.detail-view) {
   padding: 24px;
   background: var(--detail-bg);
   color: var(--detail-fg-1);
+  font-family: "Pretendard", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   font-feature-settings: "tnum" on;
 }
 

@@ -93,6 +93,10 @@ export function refreshProvidersIfStale(): Promise<void> {
   return invoke<void>("refresh_providers_if_stale");
 }
 
+export function emitCachedUsageUpdates(): Promise<void> {
+  return invoke<void>("emit_cached_usage_updates");
+}
+
 export function getCachedProviders(): Promise<ProviderUsageSnapshot[]> {
   return invoke<ProviderUsageSnapshot[]>("get_cached_providers");
 }

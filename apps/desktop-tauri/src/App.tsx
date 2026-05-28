@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { checkForUpdates, getBootstrapState, getSettingsSnapshot, setSurfaceMode } from "./lib/tauri";
+import {
+  checkForUpdates,
+  getApiKeys,
+  getBootstrapState,
+  getManualCookies,
+  getSettingsSnapshot,
+  getTokenAccountProviders,
+  getTokenAccounts,
+  setSurfaceMode,
+} from "./lib/tauri";
 import { useSurfaceSnapshot } from "./hooks/useSurfaceSnapshot";
 import { useTheme } from "./hooks/useTheme";
 import Settings from "./surfaces/Settings";
@@ -36,6 +45,28 @@ export default function App() {
   );
 }
 
+async function shouldAutoOpenFirstRunDetail(): Promise<boolean> {
+  const [apiKeys, manualCookies, tokenProviders] = await Promise.all([
+    getApiKeys().catch(() => []),
+    getManualCookies().catch(() => []),
+    getTokenAccountProviders().catch(() => []),
+  ]);
+
+  if (apiKeys.length > 0 || manualCookies.length > 0) {
+    return false;
+  }
+
+  const tokenSnapshots = await Promise.all(
+    tokenProviders.map((provider) =>
+      getTokenAccounts(provider.providerId)
+        .then((snapshot) => snapshot.accounts)
+        .catch(() => []),
+    ),
+  );
+
+  return tokenSnapshots.every((accounts) => accounts.length === 0);
+}
+
 function AppInner() {
   const surface = useSurfaceSnapshot();
   const [state, setState] = useState<BootstrapState | null>(null);
@@ -53,13 +84,17 @@ function AppInner() {
     let cancelled = false;
 
     reloadBootstrapState()
-      .then((bootstrap) => {
+      .then(async (bootstrap) => {
         if (cancelled) {
           return;
         }
         setState(bootstrap);
         setThemePreference(bootstrap.settings.theme);
         setError(null);
+
+        if (!isSettingsWindow() && !isFloatBarWindow() && await shouldAutoOpenFirstRunDetail()) {
+          void setSurfaceMode("popOut", { kind: "dashboard" }).catch(() => {});
+        }
       })
       .catch((cause: unknown) => {
         if (!cancelled) {

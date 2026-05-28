@@ -524,6 +524,10 @@ pub(crate) fn bridge_commands() -> Vec<BridgeCommandDescriptor> {
             description: "Refresh provider usage only when the in-memory cache is stale.",
         },
         BridgeCommandDescriptor {
+            id: "emit_cached_usage_updates",
+            description: "Re-emit cached Phase 6 usage snapshots so newly-mounted surfaces hydrate immediately.",
+        },
+        BridgeCommandDescriptor {
             id: "get_cached_providers",
             description: "Return the most recent provider usage snapshots from the in-memory cache.",
         },
@@ -791,6 +795,10 @@ pub(crate) fn bridge_events() -> Vec<BridgeEventDescriptor> {
         BridgeEventDescriptor {
             id: "provider-updated",
             description: "Emitted as provider usage snapshots refresh in the shared backend.",
+        },
+        BridgeEventDescriptor {
+            id: "usage:update",
+            description: "Emitted for FloatBar/DetailView usage snapshots in the lightweight Phase 6 UI shape.",
         },
         BridgeEventDescriptor {
             id: "refresh-started",

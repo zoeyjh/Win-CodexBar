@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use serde::Serialize;
 
 use crate::commands::ProviderUsageSnapshot;
+use crate::usage_bridge::UsageUpdateSnapshot;
 use crate::proof_harness::ProofConfig;
 use crate::surface::{SurfaceMode, SurfaceStateMachine, SurfaceTransition};
 use crate::surface_target::SurfaceTarget;
@@ -123,6 +124,8 @@ pub struct AppState {
     pub current_target: SurfaceTarget,
     pub tray_anchor: Option<TrayAnchor>,
     pub provider_cache: Vec<ProviderUsageSnapshot>,
+    pub usage_cache: Vec<UsageUpdateSnapshot>,
+    pub persisted_usage_cache: Vec<UsageUpdateSnapshot>,
     pub provider_cache_updated_at: Option<std::time::Instant>,
     pub provider_refresh_started_at: Option<std::time::Instant>,
     pub is_refreshing: bool,
@@ -168,6 +171,8 @@ impl AppState {
             current_target: SurfaceTarget::Summary,
             tray_anchor: None,
             provider_cache: Vec::new(),
+            usage_cache: Vec::new(),
+            persisted_usage_cache: Vec::new(),
             provider_cache_updated_at: None,
             provider_refresh_started_at: None,
             is_refreshing: false,

@@ -15,6 +15,7 @@ const tauriMocks = vi.hoisted(() => ({
   getUsageHistory: vi.fn(),
   getProviderSessions: vi.fn(),
   openSettingsWindow: vi.fn(),
+  emitCachedUsageUpdates: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/event", () => eventMocks);
@@ -36,6 +37,7 @@ describe("DetailView", () => {
   beforeEach(() => {
     listeners.clear();
     vi.clearAllMocks();
+    tauriMocks.emitCachedUsageUpdates.mockResolvedValue(undefined);
     tauriMocks.getUsageHistory.mockResolvedValue([
       {
         provider: "claude",
@@ -57,6 +59,7 @@ describe("DetailView", () => {
     });
     expect(screen.getByText("Sessions")).toBeInTheDocument();
     expect(screen.getByText("Next Reset")).toBeInTheDocument();
+    expect(tauriMocks.emitCachedUsageUpdates).toHaveBeenCalledTimes(1);
 
     const claude = screen.getByRole("button", { name: /Claude/i });
     const codex = screen.getByRole("button", { name: /Codex/i });
