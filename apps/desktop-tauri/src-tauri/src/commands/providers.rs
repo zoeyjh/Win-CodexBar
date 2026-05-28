@@ -84,15 +84,11 @@ pub(crate) fn build_fetch_context(
     }
 }
 
-const DEFAULT_PROVIDER_FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(35);
 const SLOW_PROVIDER_FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(75);
 const MAX_CONTEXT_FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(65);
 
-pub(crate) fn provider_fetch_timeout(id: ProviderId, ctx: &FetchContext) -> std::time::Duration {
-    let provider_timeout = match id {
-        ProviderId::Claude | ProviderId::Codex | ProviderId::Copilot => SLOW_PROVIDER_FETCH_TIMEOUT,
-        _ => DEFAULT_PROVIDER_FETCH_TIMEOUT,
-    };
+pub(crate) fn provider_fetch_timeout(_id: ProviderId, ctx: &FetchContext) -> std::time::Duration {
+    let provider_timeout = SLOW_PROVIDER_FETCH_TIMEOUT;
     let context_timeout = std::time::Duration::from_secs(ctx.web_timeout.saturating_add(5));
     provider_timeout.max(context_timeout.min(MAX_CONTEXT_FETCH_TIMEOUT))
 }

@@ -83,16 +83,6 @@ fn cookie_source_provider(provider_id: &str) -> Option<codexbar::core::ProviderI
     Some(match provider_id {
         "codex" => ProviderId::Codex,
         "claude" => ProviderId::Claude,
-        "cursor" => ProviderId::Cursor,
-        "opencode" => ProviderId::OpenCode,
-        "factory" => ProviderId::Factory,
-        "alibaba" => ProviderId::Alibaba,
-        "kimi" | "kimik2" => ProviderId::Kimi,
-        "minimax" => ProviderId::MiniMax,
-        "augment" => ProviderId::Augment,
-        "amp" => ProviderId::Amp,
-        "ollama" => ProviderId::Ollama,
-        "mistral" => ProviderId::Mistral,
         _ => return None,
     })
 }
@@ -141,13 +131,8 @@ pub fn get_provider_cookie_source(provider_id: String) -> Result<Option<String>,
 }
 
 fn region_provider(provider_id: &str) -> Option<codexbar::core::ProviderId> {
-    use codexbar::core::ProviderId;
-    Some(match provider_id {
-        "alibaba" => ProviderId::Alibaba,
-        "zai" => ProviderId::Zai,
-        "minimax" => ProviderId::MiniMax,
-        _ => return None,
-    })
+    let _ = provider_id;
+    None
 }
 
 pub(crate) fn provider_region_lookup(settings: &Settings, provider_id: &str) -> Option<String> {
@@ -188,11 +173,8 @@ pub fn get_provider_region(provider_id: String) -> Result<Option<String>, String
 }
 
 fn workspace_provider(provider_id: &str) -> Option<codexbar::core::ProviderId> {
-    use codexbar::core::ProviderId;
-    Some(match provider_id {
-        "openaiapi" => ProviderId::OpenAIApi,
-        _ => return None,
-    })
+    let _ = provider_id;
+    None
 }
 
 #[tauri::command]
@@ -309,143 +291,6 @@ pub fn cookie_source_options_for(provider_id: &str, lang: Language) -> Vec<Cooki
                 None,
             ),
         ],
-        "cursor" => vec![
-            cookie_option(
-                lang,
-                "auto",
-                locale::get_text(lang, locale::LocaleKey::ProviderCursorCookieSourceHelp),
-                "",
-                None,
-            ),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a Cookie header from a cursor.com request.",
-                None,
-            ),
-        ],
-        "opencode" => vec![
-            cookie_option(
-                lang,
-                "auto",
-                "Automatic imports browser cookies from opencode.ai.",
-                "",
-                None,
-            ),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a Cookie header from the billing page.",
-                None,
-            ),
-        ],
-        "factory" => vec![
-            cookie_option(
-                lang,
-                "auto",
-                "Automatic imports browser cookies and WorkOS sessions.",
-                "",
-                None,
-            ),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a Cookie header from Factory.",
-                None,
-            ),
-        ],
-        "alibaba" => vec![
-            cookie_option(
-                lang,
-                "auto",
-                "Automatic imports browser cookies from Model Studio / Bailian.",
-                "",
-                None,
-            ),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a Cookie header from Model Studio or Bailian.",
-                None,
-            ),
-        ],
-        "kimi" | "kimik2" => vec![
-            cookie_option(lang, "auto", "Automatic imports browser cookies.", "", None),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a cookie header or the kimi-auth token value.",
-                None,
-            ),
-            cookie_option(lang, "off", "", "", Some("Kimi cookies are disabled.")),
-        ],
-        "minimax" => vec![
-            cookie_option(
-                lang,
-                "auto",
-                "Automatic imports browser cookies and Coding Plan tokens.",
-                "",
-                None,
-            ),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a Cookie header from the Coding Plan page.",
-                None,
-            ),
-        ],
-        "augment" => vec![
-            cookie_option(lang, "auto", "Automatic imports browser cookies.", "", None),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a Cookie header from the Augment dashboard.",
-                None,
-            ),
-        ],
-        "amp" => vec![
-            cookie_option(lang, "auto", "Automatic imports browser cookies.", "", None),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a Cookie header from Amp settings.",
-                None,
-            ),
-        ],
-        "ollama" => vec![
-            cookie_option(lang, "auto", "Automatic imports browser cookies.", "", None),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a Cookie header from Ollama settings.",
-                None,
-            ),
-        ],
-        "mistral" => vec![
-            cookie_option(
-                lang,
-                "auto",
-                "Automatic imports browser cookies from Mistral Admin.",
-                "",
-                None,
-            ),
-            cookie_option(
-                lang,
-                "manual",
-                "",
-                "Paste a Cookie header from admin.mistral.ai.",
-                None,
-            ),
-        ],
         _ => Vec::new(),
     }
 }
@@ -453,39 +298,8 @@ pub fn cookie_source_options_for(provider_id: &str, lang: Language) -> Vec<Cooki
 /// Returns the API region options for a given provider.
 /// Empty vec means the provider has no region picker.
 pub fn region_options_for(provider_id: &str) -> Vec<RegionOption> {
-    match provider_id {
-        "alibaba" => vec![
-            RegionOption {
-                value: "intl".to_string(),
-                label: "International (Model Studio)".to_string(),
-            },
-            RegionOption {
-                value: "cn".to_string(),
-                label: "China Mainland (Bailian)".to_string(),
-            },
-        ],
-        "zai" => vec![
-            RegionOption {
-                value: "global".to_string(),
-                label: "Global".to_string(),
-            },
-            RegionOption {
-                value: "china".to_string(),
-                label: "China Mainland (BigModel)".to_string(),
-            },
-        ],
-        "minimax" => vec![
-            RegionOption {
-                value: "global".to_string(),
-                label: "Global (.io)".to_string(),
-            },
-            RegionOption {
-                value: "china".to_string(),
-                label: "China Mainland (.com)".to_string(),
-            },
-        ],
-        _ => Vec::new(),
-    }
+    let _ = provider_id;
+    Vec::new()
 }
 
 #[tauri::command]

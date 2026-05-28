@@ -175,7 +175,7 @@ fn command_inputs_reject_multiline_secrets() {
 #[test]
 fn command_inputs_reject_unknown_cookie_source_and_region_values() {
     assert!(super::set_provider_cookie_source("codex".into(), "browser".into()).is_err());
-    assert!(super::set_provider_region("zai".into(), "moon".into()).is_err());
+    assert!(super::set_provider_region("claude".into(), "moon".into()).is_err());
 }
 
 #[test]
@@ -241,15 +241,11 @@ fn provider_cookie_source_lookup_roundtrips_known_providers() {
 }
 
 #[test]
-fn provider_region_lookup_roundtrips_known_providers() {
-    let mut s = Settings::default();
-    super::provider_region_set(&mut s, "alibaba", "china".to_string()).unwrap();
-    assert_eq!(
-        provider_region_lookup(&s, "alibaba").as_deref(),
-        Some("china")
-    );
-    // Non-regional providers return None.
+fn provider_region_lookup_is_empty_for_remaining_providers() {
+    let s = Settings::default();
+    assert!(provider_region_lookup(&s, "codex").is_none());
     assert!(provider_region_lookup(&s, "claude").is_none());
+    assert!(provider_region_lookup(&s, "copilot").is_none());
 }
 
 #[test]
@@ -267,7 +263,7 @@ fn fetch_context_defaults_to_manual_cookies_without_browser_import() {
     let token_accounts = HashMap::new();
 
     let ctx = super::build_fetch_context(
-        ProviderId::Cursor,
+        ProviderId::Codex,
         &settings,
         &cookies,
         &api_keys,
@@ -321,12 +317,12 @@ fn fetch_context_claude_explicit_cli_source_still_uses_cli() {
 fn fetch_context_manual_cookie_uses_web_without_browser_import() {
     let settings = Settings::default();
     let mut cookies = ManualCookies::default();
-    cookies.set("cursor", "session=abc123");
+    cookies.set("codex", "session=abc123");
     let api_keys = ApiKeys::default();
     let token_accounts = HashMap::new();
 
     let ctx = super::build_fetch_context(
-        ProviderId::Cursor,
+        ProviderId::Codex,
         &settings,
         &cookies,
         &api_keys,
@@ -342,11 +338,11 @@ fn fetch_context_api_key_provider_uses_auto_without_cookie_import() {
     let settings = Settings::default();
     let cookies = ManualCookies::default();
     let mut api_keys = ApiKeys::default();
-    api_keys.set("deepseek", "sk-test", None);
+    api_keys.set("copilot", "sk-test", None);
     let token_accounts = HashMap::new();
 
     let ctx = super::build_fetch_context(
-        ProviderId::DeepSeek,
+        ProviderId::Copilot,
         &settings,
         &cookies,
         &api_keys,
@@ -356,31 +352,6 @@ fn fetch_context_api_key_provider_uses_auto_without_cookie_import() {
     assert_eq!(ctx.source_mode, SourceMode::Auto);
     assert!(ctx.manual_cookie_header.is_none());
     assert_eq!(ctx.api_key.as_deref(), Some("sk-test"));
-}
-
-#[test]
-fn fetch_context_token_account_uses_web_cookie_header() {
-    let settings = Settings::default();
-    let cookies = ManualCookies::default();
-    let api_keys = ApiKeys::default();
-    let mut token_accounts = HashMap::new();
-    let mut data = ProviderAccountData::new();
-    data.add_account(TokenAccount::new("Work", "abc123"));
-    token_accounts.insert(ProviderId::Ollama, data);
-
-    let ctx = super::build_fetch_context(
-        ProviderId::Ollama,
-        &settings,
-        &cookies,
-        &api_keys,
-        &token_accounts,
-    );
-
-    assert_eq!(ctx.source_mode, SourceMode::Web);
-    assert_eq!(
-        ctx.manual_cookie_header.as_deref(),
-        Some("__Secure-session=abc123")
-    );
 }
 
 #[test]
@@ -459,15 +430,15 @@ fn fetch_context_claude_session_token_account_uses_web_cookie() {
 fn fetch_context_token_account_takes_precedence_over_manual_cookie() {
     let settings = Settings::default();
     let mut cookies = ManualCookies::default();
-    cookies.set("cursor", "manual=old");
+    cookies.set("claude", "manual=old");
     let api_keys = ApiKeys::default();
     let mut token_accounts = HashMap::new();
     let mut data = ProviderAccountData::new();
-    data.add_account(TokenAccount::new("Work", "WorkosCursorSessionToken=new"));
-    token_accounts.insert(ProviderId::Cursor, data);
+    data.add_account(TokenAccount::new("Work", "sessionKey=new"));
+    token_accounts.insert(ProviderId::Claude, data);
 
     let ctx = super::build_fetch_context(
-        ProviderId::Cursor,
+        ProviderId::Claude,
         &settings,
         &cookies,
         &api_keys,
@@ -475,10 +446,7 @@ fn fetch_context_token_account_takes_precedence_over_manual_cookie() {
     );
 
     assert_eq!(ctx.source_mode, SourceMode::Web);
-    assert_eq!(
-        ctx.manual_cookie_header.as_deref(),
-        Some("WorkosCursorSessionToken=new")
-    );
+    assert_eq!(ctx.manual_cookie_header.as_deref(), Some("sessionKey=new"));
 }
 
 #[test]
@@ -608,7 +576,7 @@ fn provider_cache_is_stale_after_window() {
 }
 
 #[test]
-fn provider_fetch_timeout_allows_slower_authenticated_providers() {
+fn provider_fetch_timeout_uses_slow_timeout_for_all_remaining_providers() {
     let ctx = FetchContext {
         web_timeout: 30,
         ..FetchContext::default()
@@ -625,21 +593,17 @@ fn provider_fetch_timeout_allows_slower_authenticated_providers() {
         super::provider_fetch_timeout(ProviderId::Copilot, &ctx),
         std::time::Duration::from_secs(75)
     );
-    assert_eq!(
-        super::provider_fetch_timeout(ProviderId::DeepSeek, &ctx),
-        std::time::Duration::from_secs(35)
-    );
 }
 
 #[test]
-fn provider_fetch_timeout_respects_context_web_timeout_with_cap() {
+fn provider_fetch_timeout_ignores_higher_context_timeout_for_remaining_providers() {
     let ctx = FetchContext {
         web_timeout: 60,
         ..FetchContext::default()
     };
     assert_eq!(
-        super::provider_fetch_timeout(ProviderId::T3Chat, &ctx),
-        std::time::Duration::from_secs(65)
+        super::provider_fetch_timeout(ProviderId::Claude, &ctx),
+        std::time::Duration::from_secs(75)
     );
 
     let ctx = FetchContext {
@@ -647,8 +611,8 @@ fn provider_fetch_timeout_respects_context_web_timeout_with_cap() {
         ..FetchContext::default()
     };
     assert_eq!(
-        super::provider_fetch_timeout(ProviderId::AzureOpenAI, &ctx),
-        std::time::Duration::from_secs(65)
+        super::provider_fetch_timeout(ProviderId::Copilot, &ctx),
+        std::time::Duration::from_secs(75)
     );
 }
 
@@ -812,21 +776,15 @@ fn cookie_options_for_cookie_supporting_provider() {
 
 #[test]
 fn cookie_options_empty_for_providers_without_picker() {
-    assert!(super::cookie_source_options_for("anthropic", Language::English).is_empty());
+    assert!(super::cookie_source_options_for("copilot", Language::English).is_empty());
     assert!(super::cookie_source_options_for("unknown", Language::English).is_empty());
 }
 
 #[test]
-fn region_options_for_regional_provider() {
-    let opts = super::region_options_for("alibaba");
-    let values: Vec<_> = opts.iter().map(|o| o.value.as_str()).collect();
-    assert_eq!(values, vec!["intl", "cn"]);
-}
-
-#[test]
-fn region_options_empty_for_non_regional_provider() {
+fn region_options_empty_for_remaining_providers() {
     assert!(super::region_options_for("claude").is_empty());
     assert!(super::region_options_for("codex").is_empty());
+    assert!(super::region_options_for("copilot").is_empty());
 }
 
 #[test]

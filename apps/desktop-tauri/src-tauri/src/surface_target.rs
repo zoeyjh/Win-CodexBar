@@ -165,7 +165,8 @@ mod tests {
     #[test]
     fn supported_provider_ids_match_catalog() {
         assert!(is_supported_provider_id("codex"));
-        assert!(is_supported_provider_id("bedrock"));
+        assert!(is_supported_provider_id("claude"));
+        assert!(is_supported_provider_id("copilot"));
         assert!(!is_supported_provider_id("not-a-provider"));
     }
 

@@ -67,7 +67,9 @@ pub fn get_vertexai_status() -> Result<VertexAiStatus, String> {
 #[tauri::command]
 pub fn list_jetbrains_detected_ides() -> Result<Vec<JetbrainsIde>, String> {
     let settings = Settings::load();
-    let override_path = settings.jetbrains_ide_base_path().to_string();
+    let override_path = settings
+        .ide_base_path(codexbar::core::ProviderId::Copilot)
+        .to_string();
 
     let mut entries: Vec<JetbrainsIde> = jetbrains_detected_ide_paths()
         .into_iter()
@@ -118,21 +120,17 @@ pub fn set_jetbrains_ide_path(path: String) -> Result<(), String> {
         return Err(format!("JetBrains IDE path is not a directory: {trimmed}"));
     }
     let mut settings = Settings::load();
-    settings.set_jetbrains_ide_base_path(pb.to_string_lossy().into_owned());
+    settings.set_ide_base_path(
+        codexbar::core::ProviderId::Copilot,
+        pb.to_string_lossy().into_owned(),
+    );
     settings.save().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_kiro_status() -> Result<KiroStatus, String> {
-    if let Some(path) = codexbar::providers::kiro::find_kiro_cli() {
-        Ok(KiroStatus {
-            available: true,
-            hint: Some(path.to_string_lossy().into_owned()),
-        })
-    } else {
-        Ok(KiroStatus {
-            available: false,
-            hint: Some("kiro-cli: not found on PATH or known install locations".into()),
-        })
-    }
+    Ok(KiroStatus {
+        available: false,
+        hint: Some("Kiro support is no longer included in this build.".into()),
+    })
 }
