@@ -44,7 +44,10 @@ export function useDragOrClick() {
     draggedRef.current = false;
 
     if (shouldToggle) {
-      void invoke("toggle_detail").catch(() => {});
+      void invoke("toggle_detail", {
+        cursorX: Math.round(event.screenX),
+        cursorY: Math.round(event.screenY),
+      }).catch(() => {});
     }
   }, []);
 
