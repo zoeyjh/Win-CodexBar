@@ -70,6 +70,7 @@ fn main() {
     tauri::Builder::default()
         .manage(Mutex::new(initial_state))
         .manage(bar_runtime)
+        .manage(floatbar::FloatBarHitState::default())
         .plugin(shortcut_bridge::plugin())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             if args.len() <= 1 || should_open_tray_panel_from_args(args.iter().skip(1)) {
@@ -160,6 +161,7 @@ fn main() {
             floatbar::set_float_bar_opacity,
             floatbar::set_float_bar_click_through,
             floatbar::set_float_bar_orientation,
+            floatbar::set_float_bar_hit_rect,
         ])
         .setup(move |app| {
             if let Some(window) = app.get_webview_window("main") {

@@ -154,6 +154,7 @@ enum MenuAction {
     ToggleDetail,
     ToggleBarVisibility,
     WatchdogRetry,
+    OpenSettings,
     Quit,
 }
 
@@ -162,6 +163,7 @@ fn resolve_menu_action(id: &str) -> Option<MenuAction> {
         "toggle_detail" => Some(MenuAction::ToggleDetail),
         "toggle_bar_visibility" => Some(MenuAction::ToggleBarVisibility),
         "watchdog_retry" => Some(MenuAction::WatchdogRetry),
+        "open_settings" => Some(MenuAction::OpenSettings),
         "quit" => Some(MenuAction::Quit),
         _ => None,
     }
@@ -263,6 +265,9 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
             if runtime.current() == BarState::Paused {
                 let _ = runtime.try_send(BarCommand::Retry);
             }
+        }
+        Some(MenuAction::OpenSettings) => {
+            let _ = shell::settings_window::open_or_focus(app, "display");
         }
         Some(MenuAction::Quit) => {
             if let Some(runtime) = app.try_state::<BarRuntimeState>() {
@@ -609,6 +614,10 @@ mod tests {
         assert!(matches!(
             resolve_menu_action("watchdog_retry"),
             Some(MenuAction::WatchdogRetry)
+        ));
+        assert!(matches!(
+            resolve_menu_action("open_settings"),
+            Some(MenuAction::OpenSettings)
         ));
     }
 

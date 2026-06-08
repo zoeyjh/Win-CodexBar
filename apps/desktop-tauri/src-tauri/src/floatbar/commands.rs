@@ -49,7 +49,7 @@ pub fn set_float_bar_click_through(app: tauri::AppHandle, enabled: bool) -> Resu
     settings.save().map_err(|e| e.to_string())?;
 
     if let Some(window) = app.get_webview_window(floatbar_window::FLOATBAR_LABEL) {
-        floatbar_window::apply_click_through(&window, enabled);
+        crate::floatbar::hit_test::apply_click_through_mode(&app, &window, enabled);
     }
     Ok(())
 }
@@ -62,5 +62,19 @@ pub fn set_float_bar_orientation(app: tauri::AppHandle, orientation: String) -> 
     settings.save().map_err(|e| e.to_string())?;
 
     let _ = app.emit(super::FLOAT_BAR_CONFIG_CHANGED_EVENT, ());
+    Ok(())
+}
+
+/// 프론트엔드가 측정한 바의 창-상대 논리 사각형을 저장한다. 폴링 루프가
+/// 이 값을 읽어 클릭 통과 영역을 판정한다.
+#[tauri::command]
+pub fn set_float_bar_hit_rect(
+    state: State<'_, crate::floatbar::FloatBarHitState>,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+) -> Result<(), String> {
+    *state.0.rect.lock().unwrap() = Some(super::hit_test::HitRect { x, y, w, h });
     Ok(())
 }

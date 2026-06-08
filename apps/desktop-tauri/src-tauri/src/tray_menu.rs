@@ -55,7 +55,13 @@ pub(crate) fn build_tray_menu(
     enabled_providers: &HashSet<String>,
     bar_state: BarState,
 ) -> Vec<TrayMenuEntry> {
-    build_tray_menu_with(providers, status_labels, enabled_providers, false, bar_state)
+    build_tray_menu_with(
+        providers,
+        status_labels,
+        enabled_providers,
+        false,
+        bar_state,
+    )
 }
 
 pub(crate) fn build_tray_menu_with(
@@ -68,7 +74,9 @@ pub(crate) fn build_tray_menu_with(
     vec![
         TrayMenuEntry::item("toggle_detail", "Detail 열기"),
         TrayMenuEntry::item("toggle_bar_visibility", "Bar 표시 토글"),
-        TrayMenuEntry::item("watchdog_retry", "Watchdog 재시도").with_disabled(bar_state != BarState::Paused),
+        TrayMenuEntry::item("watchdog_retry", "Watchdog 재시도")
+            .with_disabled(bar_state != BarState::Paused),
+        TrayMenuEntry::item("open_settings", "설정 열기"),
         TrayMenuEntry::separator(),
         TrayMenuEntry::item("quit", "종료"),
     ]
@@ -168,7 +176,7 @@ mod tests {
 
         assert_eq!(
             items,
-            vec!["Detail 열기", "Bar 표시 토글", "Watchdog 재시도", "종료"]
+            vec!["Detail 열기", "Bar 표시 토글", "Watchdog 재시도", "설정 열기", "종료"]
         );
     }
 

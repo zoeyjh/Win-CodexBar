@@ -73,8 +73,8 @@ export default function FloatBarSettingsSection({ settings, saving, set }: Props
           />
         </Field>
         <Field
-          label="Click-Through"
-          description="Mouse clicks pass through to the window underneath — pure overlay mode."
+          label="Full Click-Through"
+          description="On: the whole bar passes clicks through. Off: only the bar itself is clickable; the empty area around it passes through to the window underneath."
           leading
         >
           <Toggle

@@ -25,10 +25,17 @@ const coreMocks = vi.hoisted(() => ({
 
 const windowInstance = {
   startDragging: vi.fn().mockResolvedValue(undefined),
+  outerPosition: vi.fn().mockResolvedValue({ x: 0, y: 0 }),
+  outerSize: vi.fn().mockResolvedValue({ width: 380, height: 220 }),
+  onMoved: vi.fn().mockResolvedValue(() => {}),
 };
 
 const windowMocks = vi.hoisted(() => ({
   getCurrentWindow: vi.fn(() => windowInstance),
+  currentMonitor: vi.fn().mockResolvedValue({
+    position: { x: 0, y: 0 },
+    size: { width: 1920, height: 1080 },
+  }),
 }));
 
 vi.mock("@tauri-apps/api/event", () => eventMocks);
@@ -75,6 +82,15 @@ describe("FloatBar", () => {
   beforeEach(() => {
     eventListeners.clear();
     vi.clearAllMocks();
+    // jsdom에는 ResizeObserver가 없으므로 목으로 채운다(콜백 미발화).
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
   });
 
   it("renders three provider pills and applies usage:update payloads", () => {
@@ -165,5 +181,23 @@ describe("FloatBar", () => {
 
     expect(notCancelled).toBe(false);
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("reports the bar hit-rect on mount", async () => {
+    render(<FloatBar state={bootstrap()} />);
+    await Promise.resolve();
+
+    const hitRectCalls = coreMocks.invoke.mock.calls.filter(
+      ([command]) => command === "set_float_bar_hit_rect",
+    );
+    expect(hitRectCalls.length).toBeGreaterThanOrEqual(1);
+    expect(hitRectCalls[0][1]).toEqual(
+      expect.objectContaining({
+        x: expect.any(Number),
+        y: expect.any(Number),
+        w: expect.any(Number),
+        h: expect.any(Number),
+      }),
+    );
   });
 });

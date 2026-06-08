@@ -73,9 +73,11 @@ body.floatbar-window {
 
 .floatbar__tooltip {
   position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 10px);
   z-index: 1;
   display: flex;
-  min-width: 180px;
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
@@ -85,19 +87,6 @@ body.floatbar-window {
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  white-space: nowrap;
-}
-
-.floatbar__tooltip--below {
-  top: calc(100% + 10px);
-  bottom: auto;
-  left: 0;
-}
-
-.floatbar__tooltip--above {
-  bottom: calc(100% + 10px);
-  top: auto;
-  left: 0;
 }
 
 .floatbar__tooltip-title {

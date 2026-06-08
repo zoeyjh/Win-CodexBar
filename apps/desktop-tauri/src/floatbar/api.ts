@@ -30,6 +30,17 @@ export function setFloatBarOrientation(orientation: string): Promise<void> {
   return invoke<void>("set_float_bar_orientation", { orientation });
 }
 
+export interface FloatBarHitRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export function setFloatBarHitRect(rect: FloatBarHitRect): Promise<void> {
+  return invoke<void>("set_float_bar_hit_rect", rect);
+}
+
 /** Window label used by the floatbar webview. */
 export const FLOATBAR_WINDOW_LABEL = "floatbar";
 

@@ -50,7 +50,7 @@ pub fn show(
 ) -> Result<(), String> {
     if let Some(window) = app.get_webview_window(FLOATBAR_LABEL) {
         apply_opacity(&window, opacity);
-        apply_click_through(&window, click_through);
+        crate::floatbar::hit_test::apply_click_through_mode(app, &window, click_through);
         window.show().map_err(|e| e.to_string())?;
         if !click_through {
             window.set_focus().map_err(|e| e.to_string())?;
@@ -86,6 +86,11 @@ pub fn show(
 
     // Restore prior geometry if we have one; otherwise center top.
     let mut saved = saved_window_state();
+    // The bar isn't user-resizable, so any saved size is either redundant
+    // or stale from a pre-fix build. Force it to the current code default
+    // to keep the tooltip from clipping against a too-short window.
+    saved.rect.w = w as u32;
+    saved.rect.h = h as u32;
     if saved.saved_at.timestamp() != 0 || saved.coord_space == "logical" {
         if let Ok(monitors) = win.available_monitors()
             && let Some(monitor) = monitors.first()
@@ -108,7 +113,7 @@ pub fn show(
     }
 
     apply_opacity(&win, opacity);
-    apply_click_through(&win, click_through);
+    crate::floatbar::hit_test::apply_click_through_mode(app, &win, click_through);
     win.show().map_err(|e| e.to_string())?;
     if !click_through {
         let _ = win.set_focus();
@@ -232,36 +237,6 @@ pub fn apply_opacity(window: &tauri::WebviewWindow, opacity: u8) {
     }
 }
 
-/// Toggle click-through (`WS_EX_TRANSPARENT`). When enabled, mouse events
-/// pass through to the window beneath — true overlay mode.
-pub fn apply_click_through(window: &tauri::WebviewWindow, click_through: bool) {
-    let _ = (window, click_through);
-    #[cfg(windows)]
-    {
-        use raw_window_handle::HasWindowHandle;
-        let Ok(handle) = window.window_handle() else {
-            return;
-        };
-        let raw_window_handle::RawWindowHandle::Win32(h) = handle.as_raw() else {
-            return;
-        };
-        unsafe {
-            const GWL_EXSTYLE: i32 = -20;
-            const WS_EX_LAYERED: isize = 0x00080000;
-            const WS_EX_TRANSPARENT: isize = 0x00000020;
-            let ex = GetWindowLongPtrW(h.hwnd.get(), GWL_EXSTYLE);
-            let mut new_ex = ex | WS_EX_LAYERED;
-            if click_through {
-                new_ex |= WS_EX_TRANSPARENT;
-            } else {
-                new_ex &= !WS_EX_TRANSPARENT;
-            }
-            if new_ex != ex {
-                SetWindowLongPtrW(h.hwnd.get(), GWL_EXSTYLE, new_ex);
-            }
-        }
-    }
-}
 
 #[cfg(windows)]
 #[link(name = "user32")]

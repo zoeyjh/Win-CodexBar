@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { emitCachedUsageUpdates } from "../lib/tauri";
 import type { BootstrapState } from "../types/bridge";
 import { USAGE_PROVIDERS, type UsageProvider, type UsageSnapshot } from "../types/usage";
 import ProviderPill from "./ProviderPill";
 import { useDragOrClick } from "./useDragOrClick";
+import { setFloatBarHitRect } from "./api";
 import "./floatbar.css";
 
-export type TooltipDirection = "above" | "below";
+const TOOLTIP_OPEN_DELAY_MS = 250;
 
 const EMPTY_SNAPSHOTS: Record<UsageProvider, UsageSnapshot | null> = {
   claude: null,
@@ -16,42 +16,24 @@ const EMPTY_SNAPSHOTS: Record<UsageProvider, UsageSnapshot | null> = {
   copilot: null,
 };
 
-function useTooltipDirection(): TooltipDirection {
-  const [direction, setDirection] = useState<TooltipDirection>("above");
+function formatProviderName(provider: UsageProvider): string {
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
+}
 
-  useEffect(() => {
-    let cancelled = false;
+function formatResetTime(resetAt: string | null): string {
+  if (!resetAt) {
+    return "Reset unavailable";
+  }
 
-    async function detectDirection() {
-      try {
-        const win = getCurrentWindow();
-        const position = await win.outerPosition();
-        const monitor = await currentMonitor();
-        if (cancelled || !monitor) return;
+  const resetMs = new Date(resetAt).getTime();
+  if (Number.isNaN(resetMs)) {
+    return "Reset unavailable";
+  }
 
-        const monitorY = monitor.position.y;
-        const halfHeight = monitor.size.height / 2;
-        const relativeY = position.y - monitorY;
-
-        setDirection(relativeY > halfHeight ? "above" : "below");
-      } catch {
-        // Fallback to above (most users place bar at bottom)
-      }
-    }
-
-    void detectDirection();
-
-    const unlisten = listen("tauri://move", () => {
-      void detectDirection();
-    });
-
-    return () => {
-      cancelled = true;
-      void unlisten.then((fn) => fn());
-    };
-  }, []);
-
-  return direction;
+  const totalMinutes = Math.max(0, Math.ceil((resetMs - Date.now()) / 60_000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `Resets in ${hours}h ${minutes}m`;
 }
 
 export default function FloatBar({ state: _state }: { state: BootstrapState }) {
@@ -59,7 +41,9 @@ export default function FloatBar({ state: _state }: { state: BootstrapState }) {
     EMPTY_SNAPSHOTS,
   );
   const dragOrClick = useDragOrClick();
-  const tooltipDirection = useTooltipDirection();
+  const [hoveredProvider, setHoveredProvider] = useState<UsageProvider | null>(null);
+  const openTimerRef = useRef<number | null>(null);
+  const barRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     document.body.classList.add("floatbar-window");
@@ -68,6 +52,21 @@ export default function FloatBar({ state: _state }: { state: BootstrapState }) {
       document.body.classList.remove("floatbar-window");
       document.documentElement.classList.remove("floatbar-window-root");
     };
+  }, []);
+
+  useEffect(() => {
+    const node = barRef.current;
+    if (!node) {
+      return;
+    }
+    const report = () => {
+      const r = node.getBoundingClientRect();
+      void setFloatBarHitRect({ x: r.x, y: r.y, w: r.width, h: r.height }).catch(() => {});
+    };
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(node);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -84,8 +83,40 @@ export default function FloatBar({ state: _state }: { state: BootstrapState }) {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (openTimerRef.current !== null) {
+        window.clearTimeout(openTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleHoverStart = useCallback((provider: UsageProvider) => {
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current);
+    }
+
+    // If the tooltip is already open, swap content immediately so moving
+    // between pills doesn't flash. Otherwise wait the open delay.
+    setHoveredProvider((current) => (current !== null ? provider : current));
+    openTimerRef.current = window.setTimeout(() => {
+      setHoveredProvider(provider);
+    }, TOOLTIP_OPEN_DELAY_MS);
+  }, []);
+
+  const handleHoverEnd = useCallback(() => {
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+    setHoveredProvider(null);
+  }, []);
+
+  const hoveredSnapshot = hoveredProvider ? snapshots[hoveredProvider] : null;
+
   return (
     <div
+      ref={barRef}
       className="floatbar"
       onContextMenu={(event) => event.preventDefault()}
       {...dragOrClick}
@@ -95,9 +126,21 @@ export default function FloatBar({ state: _state }: { state: BootstrapState }) {
           key={provider}
           provider={provider}
           snapshot={snapshots[provider]}
-          tooltipDirection={tooltipDirection}
+          onHoverStart={handleHoverStart}
+          onHoverEnd={handleHoverEnd}
         />
       ))}
+      {hoveredProvider !== null ? (
+        <div className="floatbar__tooltip" role="tooltip">
+          <div className="floatbar__tooltip-title">{formatProviderName(hoveredProvider)}</div>
+          {hoveredSnapshot?.plan ? (
+            <div className="floatbar__tooltip-line">{hoveredSnapshot.plan}</div>
+          ) : null}
+          <div className="floatbar__tooltip-line">
+            {formatResetTime(hoveredSnapshot?.reset_at ?? null)}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

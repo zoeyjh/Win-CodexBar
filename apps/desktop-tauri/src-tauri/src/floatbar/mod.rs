@@ -6,9 +6,11 @@
 //! shell only needs to call into the small public API exported here.
 
 mod commands;
+pub(crate) mod hit_test;
 pub(crate) mod window;
 
 pub use commands::*;
+pub use hit_test::FloatBarHitState;
 pub use window::FLOAT_BAR_CONFIG_CHANGED_EVENT;
 pub use window::FLOATBAR_LABEL;
 
@@ -120,7 +122,7 @@ pub fn apply_state(app: &tauri::AppHandle, settings: &Settings) {
         }
     } else if let Some(w) = app.get_webview_window(FLOATBAR_LABEL) {
         window::apply_opacity(&w, settings.float_bar_opacity);
-        window::apply_click_through(&w, settings.float_bar_click_through);
+        hit_test::apply_click_through_mode(app, &w, settings.float_bar_click_through);
     }
 }
 
