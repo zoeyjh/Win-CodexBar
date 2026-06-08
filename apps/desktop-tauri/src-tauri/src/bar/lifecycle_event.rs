@@ -15,6 +15,14 @@ pub enum LifecycleEvent {
     MonitorChanged { from: Option<u32>, to: u32 },
     StateTransition { from: BarState, to: BarState },
     WatchdogTick { healthy: bool },
+    /// Diagnostic: emitted on every failing watchdog tick with the actual
+    /// window rect and monitor work areas so we can see *why* the health
+    /// check tripped. `rect`/`areas` are `[x, y, w, h]` in physical pixels.
+    WatchdogUnhealthy {
+        reason: String,
+        rect: Option<[i32; 4]>,
+        areas: Vec<[i32; 4]>,
+    },
     RecoveryAttempt { attempt: u32 },
     RecoverySuccess { attempt: u32 },
     RecoveryFailed { attempt: u32, reason: String },

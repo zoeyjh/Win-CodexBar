@@ -92,12 +92,18 @@ pub fn show(
     saved.rect.w = w as u32;
     saved.rect.h = h as u32;
     if saved.saved_at.timestamp() != 0 || saved.coord_space == "logical" {
-        if let Ok(monitors) = win.available_monitors()
-            && let Some(monitor) = monitors.first()
-        {
-            let pos = monitor.position();
-            let size = monitor.size();
-            saved.clamp_to_work_area((pos.x, pos.y, size.width, size.height));
+        if let Ok(monitors) = win.available_monitors() {
+            let infos: Vec<_> = monitors
+                .iter()
+                .map(|monitor| {
+                    let pos = monitor.position();
+                    let size = monitor.size();
+                    (monitor.name().cloned(), pos.x, pos.y, size.width, size.height)
+                })
+                .collect();
+            if let Some(area) = saved.choose_work_area(&infos) {
+                saved.clamp_to_work_area(area);
+            }
         }
 
         let _ = win.set_position(LogicalPosition::new(

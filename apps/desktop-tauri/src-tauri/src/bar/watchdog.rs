@@ -13,16 +13,23 @@ pub trait WindowHealthChecker: Send + Sync {
     fn available_work_areas(&self) -> Vec<(i32, i32, u32, u32)>;
 }
 
-pub fn is_within_work_areas(
+/// True when the window rect overlaps at least one monitor work area.
+///
+/// The float bar is a tall, mostly-transparent strip the user can drag
+/// anywhere; requiring it to fit *entirely* inside one monitor wrongly flags
+/// a bar dropped low on a screen (its transparent bottom hangs off the edge)
+/// or mid-drag across a monitor seam as unhealthy. We only treat the window
+/// as lost when it overlaps *no* monitor at all — e.g. a display was
+/// unplugged and the window is stranded in dead space.
+pub fn intersects_any_work_area(
     pos: (i32, i32, u32, u32),
     work_areas: &[(i32, i32, u32, u32)],
 ) -> bool {
     let (wx, wy, ww, wh) = pos;
+    let (wl, wt, wr, wb) = (wx, wy, wx + ww as i32, wy + wh as i32);
     work_areas.iter().any(|&(ax, ay, aw, ah)| {
-        wx >= ax
-            && wy >= ay
-            && (wx + ww as i32) <= (ax + aw as i32)
-            && (wy + wh as i32) <= (ay + ah as i32)
+        let (al, at, ar, ab) = (ax, ay, ax + aw as i32, ay + ah as i32);
+        wl < ar && wr > al && wt < ab && wb > at
     })
 }
 
@@ -63,7 +70,9 @@ impl WindowHealthChecker for TauriWindowHealthChecker {
     }
 
     fn outer_rect(&self) -> Option<(i32, i32, u32, u32)> {
-        let window = self.app.get_webview_window(crate::floatbar::FLOATBAR_LABEL)?;
+        let window = self
+            .app
+            .get_webview_window(crate::floatbar::FLOATBAR_LABEL)?;
         let pos = window.outer_position().ok()?;
         let size = window.outer_size().ok()?;
         Some((pos.x, pos.y, size.width, size.height))
@@ -119,24 +128,31 @@ impl WatchdogState {
     }
 
     fn check_health(&self, checker: &dyn WindowHealthChecker) -> bool {
+        self.health_reason(checker).is_none()
+    }
+
+    /// Returns `None` when the window is healthy, or `Some(reason)` naming the
+    /// first failing sub-check. Used both by [`check_health`] and by the
+    /// diagnostic emit in [`spawn`].
+    pub fn health_reason(&self, checker: &dyn WindowHealthChecker) -> Option<&'static str> {
         if !checker.is_handle_valid() {
-            return false;
+            return Some("handle_invalid");
         }
         if !checker.is_visible() {
-            return false;
+            return Some("not_visible");
         }
         if let Some(on_top) = checker.is_always_on_top()
             && !on_top
         {
-            return false;
+            return Some("not_always_on_top");
         }
         if let Some(rect) = checker.outer_rect() {
             let areas = checker.available_work_areas();
-            if !areas.is_empty() && !is_within_work_areas(rect, &areas) {
-                return false;
+            if !areas.is_empty() && !intersects_any_work_area(rect, &areas) {
+                return Some("off_all_monitors");
             }
         }
-        true
+        None
     }
 }
 
@@ -155,9 +171,29 @@ pub fn spawn(app: AppHandle, runtime: BarRuntimeState) {
                 continue;
             }
 
+            // DIAGNOSTIC: capture the failing reason + geometry *before*
+            // ticking so the lifecycle log shows why the check trips.
+            let reason = watchdog.health_reason(&checker);
+
             let recovery = watchdog.tick(&checker);
             let healthy = recovery.is_none() && watchdog.consecutive_failures == 0;
             runtime.emit(LifecycleEvent::WatchdogTick { healthy });
+
+            if let Some(reason) = reason {
+                let rect = checker
+                    .outer_rect()
+                    .map(|(x, y, w, h)| [x, y, w as i32, h as i32]);
+                let areas = checker
+                    .available_work_areas()
+                    .into_iter()
+                    .map(|(x, y, w, h)| [x, y, w as i32, h as i32])
+                    .collect();
+                runtime.emit(LifecycleEvent::WatchdogUnhealthy {
+                    reason: reason.to_string(),
+                    rect,
+                    areas,
+                });
+            }
 
             if let Some(command) = recovery {
                 let _ = runtime.try_send(command);
@@ -203,10 +239,35 @@ mod tests {
         }
     }
 
+    // Two side-by-side 1920x1080 monitors, matching the repro hardware.
+    fn dual_monitors() -> Vec<(i32, i32, u32, u32)> {
+        vec![(0, 0, 1920, 1080), (1920, 0, 1920, 1080)]
+    }
+
     #[test]
-    fn window_rect_must_fit_within_a_work_area() {
-        assert!(is_within_work_areas((10, 10, 20, 20), &[(0, 0, 100, 100)]));
-        assert!(!is_within_work_areas((90, 90, 20, 20), &[(0, 0, 100, 100)]));
+    fn window_fully_inside_a_monitor_is_healthy() {
+        assert!(intersects_any_work_area((10, 10, 20, 20), &[(0, 0, 100, 100)]));
+    }
+
+    #[test]
+    fn bar_dropped_low_with_bottom_off_screen_stays_healthy() {
+        // Repro: bar dropped low on the right monitor; its 220px-tall
+        // (mostly transparent) window hangs 80px below the screen bottom.
+        // It still overlaps the monitor, so it must NOT trigger recovery.
+        assert!(intersects_any_work_area((3469, 944, 380, 220), &dual_monitors()));
+    }
+
+    #[test]
+    fn bar_straddling_the_monitor_seam_stays_healthy() {
+        // Repro: mid-drag across the x=1920 seam — overlaps both monitors.
+        assert!(intersects_any_work_area((1711, 859, 380, 220), &dual_monitors()));
+    }
+
+    #[test]
+    fn bar_stranded_off_all_monitors_is_unhealthy() {
+        // A display was unplugged; the window sits in dead space with zero
+        // overlap. This is the only case that should trigger recovery.
+        assert!(!intersects_any_work_area((5000, 2000, 380, 220), &dual_monitors()));
     }
 
     #[test]

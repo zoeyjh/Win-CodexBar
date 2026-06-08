@@ -16,7 +16,7 @@ mod window_state;
 use backoff::BackoffPolicy;
 use lifecycle_event::{HideReason, LifecycleEvent, TimestampedEvent};
 use state::{BarCommand, BarState};
-use watchdog::{WatchdogState, WindowHealthChecker, is_within_work_areas};
+use watchdog::{WatchdogState, WindowHealthChecker, intersects_any_work_area};
 use window_state::{WindowRect, WindowState};
 
 #[test]
@@ -141,8 +141,8 @@ fn window_state_returns_default_for_missing_file() {
 
     assert_eq!(loaded.rect.x, 1600);
     assert_eq!(loaded.rect.y, 8);
-    assert_eq!(loaded.rect.w, 300);
-    assert_eq!(loaded.rect.h, 40);
+    assert_eq!(loaded.rect.w, 380);
+    assert_eq!(loaded.rect.h, 220);
     assert_eq!(loaded.coord_space, "logical");
 }
 
@@ -294,13 +294,19 @@ fn watchdog_treats_off_screen_windows_as_unhealthy() {
 }
 
 #[test]
-fn watchdog_reports_work_area_boundary_membership() {
+fn watchdog_reports_work_area_overlap() {
     let work_areas = vec![(0, 0, 1920, 1080)];
 
-    assert!(is_within_work_areas((0, 0, 1920, 1080), &work_areas));
-    assert!(is_within_work_areas((1620, 1040, 300, 40), &work_areas));
-    assert!(!is_within_work_areas((1621, 1040, 300, 40), &work_areas));
-    assert!(!is_within_work_areas((-1, 0, 300, 40), &work_areas));
+    // Fully inside, or partially hanging off an edge, all count as healthy:
+    // the window still overlaps the monitor, so it is reachable.
+    assert!(intersects_any_work_area((0, 0, 1920, 1080), &work_areas));
+    assert!(intersects_any_work_area((1620, 1040, 300, 40), &work_areas));
+    assert!(intersects_any_work_area((1621, 1040, 300, 40), &work_areas)); // 1px off the right
+    assert!(intersects_any_work_area((-1, 0, 300, 40), &work_areas)); // 1px off the left
+
+    // Entirely off the monitor (zero overlap) → unhealthy.
+    assert!(!intersects_any_work_area((1920, 0, 300, 40), &work_areas)); // flush past the right
+    assert!(!intersects_any_work_area((-300, 0, 300, 40), &work_areas));
 }
 
 #[test]
