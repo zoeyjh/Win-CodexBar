@@ -278,7 +278,7 @@ impl Default for Settings {
             install_updates_on_quit: false, // Don't auto-install on quit by default
             ui_language: Language::default(), // English by default
             theme: ThemePreference::default(), // Auto (follows prefers-color-scheme)
-            float_bar_enabled: false,
+            float_bar_enabled: true,
             float_bar_opacity: default_float_bar_opacity(),
             float_bar_orientation: default_float_bar_orientation(),
             float_bar_click_through: false,
