@@ -49,7 +49,10 @@ impl BarRuntimeState {
     }
 
     pub async fn send(&self, cmd: BarCommand) -> Result<(), String> {
-        self.command_tx.send(cmd).await.map_err(|err| err.to_string())
+        self.command_tx
+            .send(cmd)
+            .await
+            .map_err(|err| err.to_string())
     }
 
     pub fn try_send(&self, cmd: BarCommand) -> Result<(), String> {
@@ -269,7 +272,10 @@ mod tests {
 
     #[test]
     fn visible_transitions_to_hidden_on_hide() {
-        assert_eq!(BarState::Visible.transition(BarCommand::Hide), BarState::IntentionallyHidden);
+        assert_eq!(
+            BarState::Visible.transition(BarCommand::Hide),
+            BarState::IntentionallyHidden
+        );
     }
 
     #[test]
@@ -284,8 +290,14 @@ mod tests {
 
     #[test]
     fn paused_state_only_restarts_on_retry() {
-        assert_eq!(BarState::Paused.transition(BarCommand::Retry), BarState::Visible);
-        assert_eq!(BarState::Paused.transition(BarCommand::Show), BarState::Paused);
+        assert_eq!(
+            BarState::Paused.transition(BarCommand::Retry),
+            BarState::Visible
+        );
+        assert_eq!(
+            BarState::Paused.transition(BarCommand::Show),
+            BarState::Paused
+        );
     }
 
     #[test]

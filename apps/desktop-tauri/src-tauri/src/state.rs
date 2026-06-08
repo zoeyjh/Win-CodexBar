@@ -7,10 +7,10 @@ use std::sync::Mutex;
 use serde::Serialize;
 
 use crate::commands::ProviderUsageSnapshot;
-use crate::usage_bridge::UsageUpdateSnapshot;
 use crate::proof_harness::ProofConfig;
 use crate::surface::{SurfaceMode, SurfaceStateMachine, SurfaceTransition};
 use crate::surface_target::SurfaceTarget;
+use crate::usage_bridge::UsageUpdateSnapshot;
 
 /// App-update lifecycle tracking.
 #[derive(Debug, Clone, PartialEq, Default)]

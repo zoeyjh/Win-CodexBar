@@ -215,7 +215,10 @@ async fn provider_poll_loop(app: tauri::AppHandle, id: ProviderId) {
         }
 
         let Some(delay) = poller.next_delay(status) else {
-            tracing::warn!(provider = id.cli_name(), "stopping automatic polling after auth-expired response");
+            tracing::warn!(
+                provider = id.cli_name(),
+                "stopping automatic polling after auth-expired response"
+            );
             break;
         };
         tokio::time::sleep(delay).await;
@@ -334,7 +337,11 @@ fn spawn_provider_refreshes(
     handles
 }
 
-async fn refresh_provider(app: tauri::AppHandle, id: ProviderId, ctx: FetchContext) -> UsagePollStatus {
+async fn refresh_provider(
+    app: tauri::AppHandle,
+    id: ProviderId,
+    ctx: FetchContext,
+) -> UsagePollStatus {
     let envelope = fetch_provider_snapshot(id, ctx).await;
     let observed_at = envelope.snapshot.updated_at.clone();
 
@@ -404,34 +411,32 @@ async fn fetch_provider_snapshot(id: ProviderId, ctx: FetchContext) -> ProviderF
     let metadata = provider.metadata().clone();
     let started = std::time::Instant::now();
 
-    let (status, mut snapshot) = match tokio::time::timeout(
-        provider_fetch_timeout(id, &ctx),
-        provider.fetch_usage(&ctx),
-    )
-    .await
-    {
-        Ok(Ok(result)) => (
-            UsagePollStatus::Ok,
-            ProviderUsageSnapshot::from_fetch_result(id, &metadata, &result),
-        ),
-        Ok(Err(error)) => {
-            let status = classify_provider_error(&error);
-            let message = codexbar::logging::safe_error_message(error);
-            (
-                status,
-                ProviderUsageSnapshot::from_error(id, &metadata, message),
-            )
-        }
-        Err(_) => {
-            let error = codexbar::core::ProviderError::Timeout;
-            let status = classify_provider_error(&error);
-            let message = codexbar::logging::safe_error_message(error);
-            (
-                status,
-                ProviderUsageSnapshot::from_error(id, &metadata, message),
-            )
-        }
-    };
+    let (status, mut snapshot) =
+        match tokio::time::timeout(provider_fetch_timeout(id, &ctx), provider.fetch_usage(&ctx))
+            .await
+        {
+            Ok(Ok(result)) => (
+                UsagePollStatus::Ok,
+                ProviderUsageSnapshot::from_fetch_result(id, &metadata, &result),
+            ),
+            Ok(Err(error)) => {
+                let status = classify_provider_error(&error);
+                let message = codexbar::logging::safe_error_message(error);
+                (
+                    status,
+                    ProviderUsageSnapshot::from_error(id, &metadata, message),
+                )
+            }
+            Err(_) => {
+                let error = codexbar::core::ProviderError::Timeout;
+                let status = classify_provider_error(&error);
+                let message = codexbar::logging::safe_error_message(error);
+                (
+                    status,
+                    ProviderUsageSnapshot::from_error(id, &metadata, message),
+                )
+            }
+        };
 
     record_provider_fetch_duration(id, &mut snapshot, started);
     ProviderFetchEnvelope { snapshot, status }

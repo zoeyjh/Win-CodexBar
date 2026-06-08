@@ -5,11 +5,11 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::commands::ProviderUsageSnapshot;
-use crate::usage_bridge::UsageUpdateSnapshot;
 use crate::proof_harness::ProofStatePayload;
 use crate::state::UpdateStatePayload;
 use crate::surface::SurfaceMode;
 use crate::surface_target::SurfaceTarget;
+use crate::usage_bridge::UsageUpdateSnapshot;
 
 // ── Event name constants ─────────────────────────────────────────────
 

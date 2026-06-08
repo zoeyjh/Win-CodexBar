@@ -56,9 +56,9 @@ pub fn classify_provider_error(error: &ProviderError) -> UsagePollStatus {
     match error {
         ProviderError::AuthRequired => UsagePollStatus::AuthExpired,
         ProviderError::Network(_) | ProviderError::Timeout => UsagePollStatus::Network,
-        ProviderError::OAuth(message) | ProviderError::Other(message) | ProviderError::Parse(message) => {
-            classify_message(message)
-        }
+        ProviderError::OAuth(message)
+        | ProviderError::Other(message)
+        | ProviderError::Parse(message) => classify_message(message),
         ProviderError::NotInstalled(_) | ProviderError::NoCookies => UsagePollStatus::AuthExpired,
         ProviderError::UnsupportedSource(_) => UsagePollStatus::Unknown,
     }
@@ -67,7 +67,8 @@ pub fn classify_provider_error(error: &ProviderError) -> UsagePollStatus {
 fn classify_message(message: &str) -> UsagePollStatus {
     let lower = message.trim().to_ascii_lowercase();
 
-    if lower.contains("429") || lower.contains("rate limit") || lower.contains("too many requests") {
+    if lower.contains("429") || lower.contains("rate limit") || lower.contains("too many requests")
+    {
         return UsagePollStatus::RateLimited;
     }
 
@@ -125,8 +126,15 @@ pub fn usage_snapshot_from_status(
     observed_at: &str,
 ) -> UsageUpdateSnapshot {
     let carry = previous.cloned();
-    let preserve_metrics = matches!(status, UsagePollStatus::RateLimited | UsagePollStatus::Network);
-    let confidence = if previous.is_some() { "cached" } else { "inferred" };
+    let preserve_metrics = matches!(
+        status,
+        UsagePollStatus::RateLimited | UsagePollStatus::Network
+    );
+    let confidence = if previous.is_some() {
+        "cached"
+    } else {
+        "inferred"
+    };
 
     UsageUpdateSnapshot {
         provider: provider.to_string(),
@@ -151,7 +159,9 @@ pub fn usage_snapshot_from_status(
             None
         },
         reset_at: if preserve_metrics {
-            carry.as_ref().and_then(|snapshot| snapshot.reset_at.clone())
+            carry
+                .as_ref()
+                .and_then(|snapshot| snapshot.reset_at.clone())
         } else {
             None
         },
@@ -185,7 +195,8 @@ pub fn load_usage_cache() -> Result<Vec<UsageUpdateSnapshot>, String> {
         return Ok(Vec::new());
     }
 
-    let text = fs::read_to_string(&path).map_err(|err| format!("Failed to read {}: {err}", path.display()))?;
+    let text = fs::read_to_string(&path)
+        .map_err(|err| format!("Failed to read {}: {err}", path.display()))?;
     serde_json::from_str(&text).map_err(|err| format!("Failed to parse {}: {err}", path.display()))
 }
 

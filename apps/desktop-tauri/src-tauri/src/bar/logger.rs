@@ -54,7 +54,10 @@ fn append_event(event: &TimestampedEvent) -> Result<(), String> {
 }
 
 fn log_path_for(ts: DateTime<Utc>) -> PathBuf {
-    lifecycle_log_dir().join(format!("lifecycle-{}.log", ts.with_timezone(&Local).format("%Y-%m-%d")))
+    lifecycle_log_dir().join(format!(
+        "lifecycle-{}.log",
+        ts.with_timezone(&Local).format("%Y-%m-%d")
+    ))
 }
 
 fn rotate_logs() {
@@ -62,8 +65,9 @@ fn rotate_logs() {
     let Ok(entries) = fs::read_dir(&log_dir) else {
         return;
     };
-    let cutoff = std::time::SystemTime::now()
-        .checked_sub(std::time::Duration::from_secs((LOG_RETENTION_DAYS as u64) * 24 * 60 * 60));
+    let cutoff = std::time::SystemTime::now().checked_sub(std::time::Duration::from_secs(
+        (LOG_RETENTION_DAYS as u64) * 24 * 60 * 60,
+    ));
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -78,7 +82,13 @@ fn rotate_logs() {
         }
 
         let should_delete = cutoff
-            .and_then(|cutoff| entry.metadata().ok().and_then(|meta| meta.modified().ok()).map(|modified| modified < cutoff))
+            .and_then(|cutoff| {
+                entry
+                    .metadata()
+                    .ok()
+                    .and_then(|meta| meta.modified().ok())
+                    .map(|modified| modified < cutoff)
+            })
             .unwrap_or(false);
         if should_delete {
             let _ = fs::remove_file(path);
@@ -93,7 +103,8 @@ fn should_write_event(
     match event.event {
         LifecycleEvent::WatchdogTick { healthy: true } => {
             if let Some(previous) = last_healthy_tick_at.as_ref()
-                && event.ts - previous.to_owned() < Duration::minutes(HEALTHY_WATCHDOG_THROTTLE_MINUTES)
+                && event.ts - previous.to_owned()
+                    < Duration::minutes(HEALTHY_WATCHDOG_THROTTLE_MINUTES)
             {
                 return false;
             }
