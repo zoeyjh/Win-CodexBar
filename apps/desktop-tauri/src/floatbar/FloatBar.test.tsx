@@ -44,8 +44,11 @@ vi.mock("@tauri-apps/api/window", () => windowMocks);
 
 import FloatBar from "./FloatBar";
 
-function bootstrap(): BootstrapState {
-  return {} as BootstrapState;
+function bootstrap(resetTimeRelative?: boolean): BootstrapState {
+  if (resetTimeRelative === undefined) {
+    return {} as BootstrapState;
+  }
+  return { settings: { resetTimeRelative } } as BootstrapState;
 }
 
 function emitUsage(snapshot: UsageSnapshot) {
@@ -134,6 +137,102 @@ describe("FloatBar", () => {
       expect(screen.getByText("Codex")).toBeInTheDocument();
       expect(screen.getByText("Pro")).toBeInTheDocument();
       expect(screen.getByText("Resets in 1h 30m")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows an absolute reset time when relative reset is disabled", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T10:15:00.000Z"));
+
+    try {
+      render(<FloatBar state={bootstrap(false)} />);
+      emitUsage(
+        usageSnapshot("codex", {
+          plan: "Pro",
+          reset_at: "2026-06-01T11:45:00.000Z",
+        }),
+      );
+
+      const pill = screen.getByTestId("provider-pill-codex");
+      fireEvent.mouseEnter(pill);
+
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+
+      expect(screen.getByText("Codex")).toBeInTheDocument();
+      expect(screen.queryByText(/Resets in/)).toBeNull();
+      // Reset is later today: the remaining countdown renders on its own line
+      // (exact match — it must not be glued to the clock time).
+      expect(screen.getByText("(1h 30m left)")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("appends a multi-day remaining countdown in absolute mode", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T10:15:00.000Z"));
+
+    try {
+      render(<FloatBar state={bootstrap(false)} />);
+      emitUsage(
+        usageSnapshot("codex", {
+          plan: "Pro",
+          reset_at: "2026-06-03T12:15:00.000Z",
+        }),
+      );
+
+      const pill = screen.getByTestId("provider-pill-codex");
+      fireEvent.mouseEnter(pill);
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+
+      expect(screen.getByText("(2d 2h left)")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("re-reads the reset format when the float-bar config changes", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-01T10:15:00.000Z"));
+
+    try {
+      coreMocks.invoke.mockImplementation((command: string) => {
+        if (command === "get_settings_snapshot") {
+          return Promise.resolve({ resetTimeRelative: false });
+        }
+        return Promise.resolve(undefined);
+      });
+
+      render(<FloatBar state={bootstrap(true)} />);
+      emitUsage(
+        usageSnapshot("codex", {
+          plan: "Pro",
+          reset_at: "2026-06-01T11:45:00.000Z",
+        }),
+      );
+
+      const pill = screen.getByTestId("provider-pill-codex");
+      fireEvent.mouseEnter(pill);
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(screen.getByText("Resets in 1h 30m")).toBeInTheDocument();
+
+      const handler = eventListeners.get("float-bar-config-changed");
+      expect(handler).toBeDefined();
+      await act(async () => {
+        handler!({ payload: undefined });
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByText("Resets in 1h 30m")).toBeNull();
     } finally {
       vi.useRealTimers();
     }

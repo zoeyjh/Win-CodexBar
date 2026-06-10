@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { emitCachedUsageUpdates } from "../lib/tauri";
+import { emitCachedUsageUpdates, getSettingsSnapshot } from "../lib/tauri";
 import type { BootstrapState } from "../types/bridge";
 import { USAGE_PROVIDERS, type UsageProvider, type UsageSnapshot } from "../types/usage";
 import ProviderPill from "./ProviderPill";
 import { useDragOrClick } from "./useDragOrClick";
-import { setFloatBarHitRect } from "./api";
+import { FLOAT_BAR_CONFIG_CHANGED_EVENT, setFloatBarHitRect } from "./api";
 import "./floatbar.css";
 
 const TOOLTIP_OPEN_DELAY_MS = 250;
@@ -20,28 +20,84 @@ function formatProviderName(provider: UsageProvider): string {
   return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
-function formatResetTime(resetAt: string | null): string {
+function formatRemaining(totalMinutes: number): string {
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) {
+    return `${days}d ${hours}h left`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m left`;
+  }
+  return `${minutes}m left`;
+}
+
+/**
+ * Reset display split into a primary line (countdown or clock time) and an
+ * optional secondary line (the absolute-mode remaining suffix). The two are
+ * rendered on separate lines so they don't overflow the narrow tooltip.
+ */
+interface ResetDisplay {
+  time: string;
+  remaining: string | null;
+}
+
+function formatReset(resetAt: string | null, relative: boolean): ResetDisplay {
   if (!resetAt) {
-    return "Reset unavailable";
+    return { time: "Reset unavailable", remaining: null };
   }
 
   const resetMs = new Date(resetAt).getTime();
   if (Number.isNaN(resetMs)) {
-    return "Reset unavailable";
+    return { time: "Reset unavailable", remaining: null };
   }
 
-  const totalMinutes = Math.max(0, Math.ceil((resetMs - Date.now()) / 60_000));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `Resets in ${hours}h ${minutes}m`;
+  if (relative) {
+    const totalMinutes = Math.max(0, Math.ceil((resetMs - Date.now()) / 60_000));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return { time: `Resets in ${hours}h ${minutes}m`, remaining: null };
+  }
+
+  // Absolute mode: show the clock time (date omitted when the reset falls on
+  // today) with the remaining countdown on its own line, e.g.
+  //   3:00 PM
+  //   (2h 33m left)
+  const now = new Date();
+  const resetDate = new Date(resetMs);
+  const isToday =
+    resetDate.getFullYear() === now.getFullYear() &&
+    resetDate.getMonth() === now.getMonth() &&
+    resetDate.getDate() === now.getDate();
+
+  let clock: string;
+  try {
+    clock = new Intl.DateTimeFormat(undefined, {
+      ...(isToday ? {} : { month: "short", day: "numeric" }),
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(resetDate);
+  } catch {
+    return { time: "Reset unavailable", remaining: null };
+  }
+
+  const totalMinutes = Math.max(0, Math.ceil((resetMs - now.getTime()) / 60_000));
+  return {
+    time: clock,
+    remaining: totalMinutes > 0 ? `(${formatRemaining(totalMinutes)})` : null,
+  };
 }
 
-export default function FloatBar({ state: _state }: { state: BootstrapState }) {
+export default function FloatBar({ state }: { state: BootstrapState }) {
   const [snapshots, setSnapshots] = useState<Record<UsageProvider, UsageSnapshot | null>>(
     EMPTY_SNAPSHOTS,
   );
   const dragOrClick = useDragOrClick();
   const [hoveredProvider, setHoveredProvider] = useState<UsageProvider | null>(null);
+  const [relativeReset, setRelativeReset] = useState<boolean>(
+    () => state?.settings?.resetTimeRelative ?? true,
+  );
   const openTimerRef = useRef<number | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
 
@@ -83,6 +139,21 @@ export default function FloatBar({ state: _state }: { state: BootstrapState }) {
     };
   }, []);
 
+  // The float-bar window bootstraps its settings once, so re-read the reset
+  // format whenever the shell signals a settings change. Without this the
+  // "Relative Reset time" toggle would only take effect after the bar is
+  // recreated.
+  useEffect(() => {
+    const unlisten = listen(FLOAT_BAR_CONFIG_CHANGED_EVENT, () => {
+      void getSettingsSnapshot()
+        .then((settings) => setRelativeReset(settings.resetTimeRelative))
+        .catch(() => {});
+    });
+    return () => {
+      void unlisten.then((stopListening) => stopListening()).catch(() => {});
+    };
+  }, []);
+
   useEffect(() => {
     return () => {
       if (openTimerRef.current !== null) {
@@ -113,6 +184,7 @@ export default function FloatBar({ state: _state }: { state: BootstrapState }) {
   }, []);
 
   const hoveredSnapshot = hoveredProvider ? snapshots[hoveredProvider] : null;
+  const resetInfo = formatReset(hoveredSnapshot?.reset_at ?? null, relativeReset);
 
   return (
     <div
@@ -136,9 +208,10 @@ export default function FloatBar({ state: _state }: { state: BootstrapState }) {
           {hoveredSnapshot?.plan ? (
             <div className="floatbar__tooltip-line">{hoveredSnapshot.plan}</div>
           ) : null}
-          <div className="floatbar__tooltip-line">
-            {formatResetTime(hoveredSnapshot?.reset_at ?? null)}
-          </div>
+          <div className="floatbar__tooltip-line">{resetInfo.time}</div>
+          {resetInfo.remaining ? (
+            <div className="floatbar__tooltip-line">{resetInfo.remaining}</div>
+          ) : null}
         </div>
       ) : null}
     </div>

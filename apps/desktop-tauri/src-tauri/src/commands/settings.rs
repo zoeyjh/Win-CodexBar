@@ -53,6 +53,7 @@ impl SettingsUpdate {
             || self.refresh_interval_secs.is_some()
             || self.high_usage_threshold.is_some()
             || self.critical_usage_threshold.is_some()
+            || self.reset_time_relative.is_some()
     }
 
     fn rebuilds_tray_menu(&self) -> bool {

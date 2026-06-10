@@ -144,10 +144,12 @@ describe("App detail surface", () => {
   it("renders the grouped Next Reset detail view when the shell is in popOut mode", async () => {
     render(<App />);
 
+    // Wait for the live provider snapshot to land — "Next Reset" is the card
+    // header and renders even in the empty state, so gate on actual content.
     await waitFor(() => {
-      expect(screen.getByText("Next Reset")).toBeInTheDocument();
+      expect(screen.getByText("Claude")).toBeInTheDocument();
     });
-    expect(screen.getByText("Claude")).toBeInTheDocument();
+    expect(screen.getByText("Next Reset")).toBeInTheDocument();
     expect(screen.getByText("Pro")).toBeInTheDocument();
     expect(screen.getByText("Session")).toBeInTheDocument();
   });

@@ -82,9 +82,26 @@ export const PROVIDER_COLORS: Record<string, string> = {
   copilot: "#7B61FF",
 };
 
-export function formatWindowCountdown(resetsAt: string | null): string {
+export function formatWindowCountdown(
+  resetsAt: string | null,
+  relative: boolean,
+): string {
   if (!resetsAt) return "--";
-  const remainingMs = new Date(resetsAt).getTime() - Date.now();
+  const target = new Date(resetsAt).getTime();
+  if (!relative) {
+    if (Number.isNaN(target)) return "--";
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(new Date(target));
+    } catch {
+      return "--";
+    }
+  }
+  const remainingMs = target - Date.now();
   if (Number.isNaN(remainingMs) || remainingMs <= 0) return "now";
   const totalMinutes = Math.ceil(remainingMs / 60_000);
   const hours = Math.floor(totalMinutes / 60);

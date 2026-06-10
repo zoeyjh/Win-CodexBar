@@ -6,7 +6,12 @@ const useProvidersMocks = vi.hoisted(() => ({
   useProviders: vi.fn(),
 }));
 
+const useSettingsMocks = vi.hoisted(() => ({
+  useSettings: vi.fn(),
+}));
+
 vi.mock("../hooks/useProviders", () => useProvidersMocks);
+vi.mock("../hooks/useSettings", () => useSettingsMocks);
 
 import DetailView from "./DetailView";
 
@@ -55,6 +60,12 @@ describe("DetailView", () => {
       refresh: vi.fn(),
       lastRefresh: null,
       hasCachedData: false,
+    });
+    useSettingsMocks.useSettings.mockReturnValue({
+      settings: { resetTimeRelative: true },
+      saving: false,
+      error: null,
+      update: vi.fn(),
     });
   });
 
@@ -115,6 +126,34 @@ describe("DetailView", () => {
       expect(screen.getByText("Bonus")).toBeInTheDocument();
       expect(screen.getByText(/1h 30m/i)).toBeInTheDocument();
       expect(screen.getByText(/20m/i)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows absolute reset times when relative reset is disabled", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-28T09:00:00Z"));
+
+    useSettingsMocks.useSettings.mockReturnValue({
+      settings: { resetTimeRelative: false },
+      saving: false,
+      error: null,
+      update: vi.fn(),
+    });
+    useProvidersMocks.useProviders.mockReturnValue({
+      providers: [buildSnapshot({})],
+      isRefreshing: false,
+      refresh: vi.fn(),
+      lastRefresh: null,
+      hasCachedData: true,
+    });
+
+    try {
+      render(<DetailView state={{} as never} />);
+
+      expect(screen.getByText(/42% used/i)).toBeInTheDocument();
+      expect(screen.queryByText(/1h 30m/i)).toBeNull();
     } finally {
       vi.useRealTimers();
     }

@@ -8,8 +8,10 @@ import {
 
 export default function NextResetCard({
   providers,
+  relative,
 }: {
   providers: ProviderUsageSnapshot[];
+  relative: boolean;
 }) {
   const activeProviders = providers.filter((p) => !p.error);
 
@@ -59,7 +61,7 @@ export default function NextResetCard({
                     <div className="reset-window__row">
                       <span className="reset-window__label">{entry.label}</span>
                       <span className="reset-window__info">
-                        {Math.round(entry.window.usedPercent)}% used · {formatWindowCountdown(entry.window.resetsAt)}
+                        {Math.round(entry.window.usedPercent)}% used · {formatWindowCountdown(entry.window.resetsAt, relative)}
                       </span>
                     </div>
                     <div className="reset-window__bar">
