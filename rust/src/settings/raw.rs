@@ -3,8 +3,8 @@ use super::*;
 /// Raw on-disk shape of [`Settings`] used purely for deserialization.
 ///
 /// It mirrors the canonical `Settings` fields but ALSO accepts the legacy
-/// flat per-provider fields (`codex_cookie_source`, `alibaba_api_region`,
-/// `claude_avoid_keychain_prompts`, …) so existing `settings.json` files keep
+/// flat per-provider fields (`codex_cookie_source`, `alibaba_api_region`, …)
+/// so existing `settings.json` files keep
 /// loading. The `From<RawSettings> for Settings` impl folds any present
 /// legacy field into the unified [`provider_configs`](Settings::provider_configs)
 /// map.
@@ -24,16 +24,10 @@ pub(super) struct RawSettings {
     high_usage_threshold: f64,
     critical_usage_threshold: f64,
     merge_tray_icons: bool,
-    tray_icon_mode: TrayIconMode,
-    #[serde(default = "default_true")]
-    switcher_shows_icons: bool,
-    menu_bar_shows_highest_usage: bool,
-    menu_bar_shows_percent: bool,
     show_as_used: bool,
     surprise_animations: bool,
     enable_animations: bool,
     reset_time_relative: bool,
-    menu_bar_display_mode: String,
     show_credits_extra_usage: bool,
     show_all_token_accounts_in_menu: bool,
 
@@ -95,11 +89,6 @@ pub(super) struct RawSettings {
     minimax_api_token: Option<String>,
     #[serde(default)]
     minimax_api_region: Option<String>,
-    #[serde(default)]
-    claude_avoid_keychain_prompts: Option<bool>,
-
-    show_debug_settings: bool,
-    disable_keychain_access: bool,
     hide_personal_info: bool,
     update_channel: UpdateChannel,
     provider_metrics: HashMap<String, MetricPreference>,
@@ -139,15 +128,10 @@ impl Default for RawSettings {
             high_usage_threshold: s.high_usage_threshold,
             critical_usage_threshold: s.critical_usage_threshold,
             merge_tray_icons: s.merge_tray_icons,
-            tray_icon_mode: s.tray_icon_mode,
-            switcher_shows_icons: s.switcher_shows_icons,
-            menu_bar_shows_highest_usage: s.menu_bar_shows_highest_usage,
-            menu_bar_shows_percent: s.menu_bar_shows_percent,
             show_as_used: s.show_as_used,
             surprise_animations: s.surprise_animations,
             enable_animations: s.enable_animations,
             reset_time_relative: s.reset_time_relative,
-            menu_bar_display_mode: s.menu_bar_display_mode,
             show_credits_extra_usage: s.show_credits_extra_usage,
             show_all_token_accounts_in_menu: s.show_all_token_accounts_in_menu,
             provider_configs: s.provider_configs,
@@ -178,9 +162,6 @@ impl Default for RawSettings {
             minimax_cookie_header: None,
             minimax_api_token: None,
             minimax_api_region: None,
-            claude_avoid_keychain_prompts: None,
-            show_debug_settings: s.show_debug_settings,
-            disable_keychain_access: s.disable_keychain_access,
             hide_personal_info: s.hide_personal_info,
             update_channel: s.update_channel,
             provider_metrics: s.provider_metrics,
@@ -267,14 +248,6 @@ impl From<RawSettings> for Settings {
                 .or_default()
                 .historical_tracking = true;
         }
-        if let Some(v) = raw.claude_avoid_keychain_prompts
-            && v
-        {
-            provider_configs
-                .entry(ProviderId::Claude)
-                .or_default()
-                .avoid_keychain_prompts = true;
-        }
 
         Settings {
             enabled_providers: raw.enabled_providers,
@@ -287,20 +260,13 @@ impl From<RawSettings> for Settings {
             high_usage_threshold: raw.high_usage_threshold,
             critical_usage_threshold: raw.critical_usage_threshold,
             merge_tray_icons: raw.merge_tray_icons,
-            tray_icon_mode: raw.tray_icon_mode,
-            switcher_shows_icons: raw.switcher_shows_icons,
-            menu_bar_shows_highest_usage: raw.menu_bar_shows_highest_usage,
-            menu_bar_shows_percent: raw.menu_bar_shows_percent,
             show_as_used: raw.show_as_used,
             surprise_animations: raw.surprise_animations,
             enable_animations: raw.enable_animations,
             reset_time_relative: raw.reset_time_relative,
-            menu_bar_display_mode: raw.menu_bar_display_mode,
             show_credits_extra_usage: raw.show_credits_extra_usage,
             show_all_token_accounts_in_menu: raw.show_all_token_accounts_in_menu,
             provider_configs,
-            show_debug_settings: raw.show_debug_settings,
-            disable_keychain_access: raw.disable_keychain_access,
             hide_personal_info: raw.hide_personal_info,
             update_channel: raw.update_channel,
             provider_metrics: raw.provider_metrics,

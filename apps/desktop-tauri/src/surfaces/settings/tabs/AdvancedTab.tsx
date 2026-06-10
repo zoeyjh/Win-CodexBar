@@ -64,17 +64,6 @@ export default function AdvancedTab({ settings, set, saving }: TabProps) {
         <h3 className="settings-section__title">{t("SectionDebug")}</h3>
         <div className="settings-section__group">
           <Field
-            label={t("ShowDebugSettingsLabel")}
-            description={t("ShowDebugSettingsHelper")}
-            leading
-          >
-            <Toggle
-              checked={settings.showDebugSettings}
-              disabled={saving}
-              onChange={(v) => set({ showDebugSettings: v })}
-            />
-          </Field>
-          <Field
             label={t("SurpriseAnimationsLabel")}
             description={t("SurpriseAnimationsHelper")}
             leading
@@ -106,40 +95,6 @@ export default function AdvancedTab({ settings, set, saving }: TabProps) {
         </div>
       </section>
 
-      {/* ── Keychain access ──────────────────────────────────────── */}
-      <section className="settings-section">
-        <h3 className="settings-section__title settings-section__title--bold">
-          KEYCHAIN ACCESS
-        </h3>
-        <p className="settings-section__caption">
-          Disable all Keychain reads and writes. Browser cookie import is
-          unavailable; paste Cookie headers manually in Providers.
-        </p>
-        <div className="settings-section__group">
-          <Field
-            label={t("DisableAllKeychainLabel")}
-            description={t("DisableAllKeychainHelper")}
-            leading
-          >
-            <Toggle
-              checked={settings.disableKeychainAccess}
-              disabled={saving}
-              onChange={(v) => set({ disableKeychainAccess: v })}
-            />
-          </Field>
-          <Field
-            label={t("AvoidKeychainPromptsLabel")}
-            description={t("AvoidKeychainPromptsHelper")}
-            leading
-          >
-            <Toggle
-              checked={settings.claudeAvoidKeychainPrompts}
-              disabled={saving || settings.disableKeychainAccess}
-              onChange={(v) => set({ claudeAvoidKeychainPrompts: v })}
-            />
-          </Field>
-        </div>
-      </section>
     </>
   );
 }

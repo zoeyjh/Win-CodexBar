@@ -110,7 +110,6 @@ impl LocaleKey {
             // Advanced tab
             LocaleKey::RefreshSettings => "刷新",
             LocaleKey::Animations => "动画",
-            LocaleKey::MenuBar => "菜单栏",
             LocaleKey::Fun => "趣味",
             LocaleKey::GlobalShortcut => "全局快捷键",
             LocaleKey::Privacy => "隐私",
@@ -316,10 +315,6 @@ impl LocaleKey {
             LocaleKey::ProviderClaudeCookiesHelp => {
                 "优先使用浏览器 Cookie/sessionKey，因为它与 Claude 设置页的用量一致。"
             }
-            LocaleKey::ProviderClaudeAvoidKeychainPrompts => "避免钥匙串提示",
-            LocaleKey::ProviderClaudeAvoidKeychainPromptsHelp => {
-                "使用 /usr/bin/security 读取 Claude 凭据，避免 CodexBar 的钥匙串提示。"
-            }
             LocaleKey::ProviderCursorCookieSourceHelp => "自动导入浏览器 Cookie 或已保存会话。",
             LocaleKey::ProviderCursorCreditsHelp => "包含计划额度之外的按量计费用量。",
             LocaleKey::AutoFallbackHelp => "当首选来源失败时自动回退到下一个来源。",
@@ -439,21 +434,6 @@ impl LocaleKey {
             LocaleKey::NotificationTestSoundPlaying => "播放中…",
 
             // Tauri desktop shell — Display tab fields
-            LocaleKey::TrayIconModeLabel => "托盘图标模式",
-            LocaleKey::TrayIconModeHelper => "使用单一合并图标，或为每个已启用服务商显示独立图标。",
-            LocaleKey::TrayIconModeSingle => "合并",
-            LocaleKey::TrayIconModePerProvider => "按服务商",
-            LocaleKey::ShowProviderIcons => "显示服务商图标",
-            LocaleKey::ShowProviderIconsHelper => "在托盘切换器中显示服务商图标。",
-            LocaleKey::PreferHighestUsage => "优先显示最高用量",
-            LocaleKey::PreferHighestUsageHelper => "在合并托盘显示中优先展示最接近限额的服务商。",
-            LocaleKey::ShowPercentInTray => "在托盘中显示百分比",
-            LocaleKey::ShowPercentInTrayHelper => "使用服务商标识与百分比文字替代用量条。",
-            LocaleKey::DisplayModeLabel => "显示模式",
-            LocaleKey::DisplayModeHelper => "菜单栏标签显示的详细程度。",
-            LocaleKey::DisplayModeDetailed => "详细",
-            LocaleKey::DisplayModeCompact => "紧凑",
-            LocaleKey::DisplayModeMinimal => "最简",
             LocaleKey::ShowAsUsedLabel => "显示为已用",
             LocaleKey::ShowAsUsedHelper => "以已使用百分比而非剩余显示用量条。",
             LocaleKey::ShowAllTokenAccountsLabel => "显示所有令牌账户",
@@ -467,16 +447,6 @@ impl LocaleKey {
             // Tauri desktop shell — Advanced tab fields
             LocaleKey::UpdateChannelStableOption => "稳定版",
             LocaleKey::UpdateChannelBetaOption => "测试预览版",
-            LocaleKey::AvoidKeychainPromptsLabel => "避免钥匙串弹窗（Claude）",
-            LocaleKey::AvoidKeychainPromptsHelper => {
-                "跳过 Claude 的钥匙串凭据读取，避免系统权限弹窗。"
-            }
-            LocaleKey::DisableAllKeychainLabel => "禁用所有钥匙串访问",
-            LocaleKey::DisableAllKeychainHelper => {
-                "关闭所有服务商的凭据/钥匙串读取。同时启用上方的 Claude 选项。"
-            }
-            LocaleKey::ShowDebugSettingsLabel => "显示调试设置",
-            LocaleKey::ShowDebugSettingsHelper => "在界面中显示故障排查和开发者相关选项。",
             LocaleKey::LanguageEnglishOption => "English",
             LocaleKey::LanguageChineseOption => "中文",
 

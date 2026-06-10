@@ -89,10 +89,7 @@ fn float_bar_raw_clamps_out_of_range_opacity_on_load() {
             "surprise_animations": false,
             "enable_animations": true,
             "reset_time_relative": true,
-            "menu_bar_display_mode": "detailed",
             "show_credits_extra_usage": true,
-            "show_debug_settings": false,
-            "disable_keychain_access": false,
             "hide_personal_info": false,
             "float_bar_opacity": 250,
             "float_bar_orientation": "diagonal"
@@ -258,15 +255,6 @@ fn test_settings_roundtrip_with_language() {
 }
 
 #[test]
-fn test_settings_with_utf8_bom_parses_perprovider_tray_mode() {
-    let json = "\u{feff}{\n            \"enabled_providers\": [\"claude\", \"codex\"],\n            \"refresh_interval_secs\": 300,\n            \"tray_icon_mode\": \"perprovider\"\n        }";
-
-    let settings: Settings = serde_json::from_str(json.trim_start_matches('\u{feff}')).unwrap();
-
-    assert_eq!(settings.tray_icon_mode, TrayIconMode::PerProvider);
-}
-
-#[test]
 fn test_language_serde_serialization() {
     // Test that Language serializes to lowercase string
     let english = Language::English;
@@ -368,8 +356,7 @@ fn test_legacy_per_provider_fields_migrate_into_provider_configs() {
             "claude_usage_source": "ccusage",
             "codex_usage_source": "manual",
             "codex_openai_web_extras": false,
-            "codex_historical_tracking": true,
-            "claude_avoid_keychain_prompts": true
+            "codex_historical_tracking": true
         }"#;
 
     let settings: Settings = serde_json::from_str(legacy_json).unwrap();
@@ -380,12 +367,10 @@ fn test_legacy_per_provider_fields_migrate_into_provider_configs() {
     assert_eq!(settings.usage_source(ProviderId::Codex), "manual");
     assert!(!settings.openai_web_extras(ProviderId::Codex));
     assert!(settings.historical_tracking(ProviderId::Codex));
-    assert!(settings.avoid_keychain_prompts(ProviderId::Claude));
 
     assert_eq!(settings.codex_cookie_source(), "manual");
     assert!(!settings.codex_openai_web_extras());
     assert!(settings.codex_historical_tracking());
-    assert!(settings.claude_avoid_keychain_prompts());
 }
 
 #[test]
@@ -396,14 +381,9 @@ fn test_provider_configs_roundtrip() {
     settings.set_usage_source(ProviderId::Claude, "ccusage");
     settings.set_openai_web_extras(ProviderId::Codex, false);
     settings.set_historical_tracking(ProviderId::Codex, true);
-    settings.set_avoid_keychain_prompts(ProviderId::Claude, true);
 
     let json = serde_json::to_string(&settings).unwrap();
     assert!(!json.contains("\"codex_cookie_source\""), "json: {json}");
-    assert!(
-        !json.contains("\"claude_avoid_keychain_prompts\""),
-        "json: {json}"
-    );
     assert!(json.contains("\"provider_configs\""), "json: {json}");
 
     let loaded: Settings = serde_json::from_str(&json).unwrap();
@@ -412,7 +392,6 @@ fn test_provider_configs_roundtrip() {
     assert_eq!(loaded.usage_source(ProviderId::Claude), "ccusage");
     assert!(!loaded.openai_web_extras(ProviderId::Codex));
     assert!(loaded.historical_tracking(ProviderId::Codex));
-    assert!(loaded.avoid_keychain_prompts(ProviderId::Claude));
     assert_eq!(
         loaded.provider_configs.get(&ProviderId::Codex),
         settings.provider_configs.get(&ProviderId::Codex)
@@ -455,5 +434,4 @@ fn test_per_provider_defaults_applied() {
     assert_eq!(settings.cookie_source(ProviderId::Claude), "manual");
     assert!(settings.openai_web_extras(ProviderId::Codex));
     assert!(!settings.historical_tracking(ProviderId::Codex));
-    assert!(!settings.avoid_keychain_prompts(ProviderId::Claude));
 }

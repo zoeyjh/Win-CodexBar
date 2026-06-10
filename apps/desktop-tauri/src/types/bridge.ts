@@ -9,8 +9,6 @@ export type SettingsTabId =
 
 // ── Narrowed string-literal unions (persisted settings enums) ─────────
 
-export type TrayIconMode = "single" | "perProvider";
-
 export type MetricPreference =
   | "automatic"
   | "session"
@@ -27,7 +25,6 @@ export type UpdateChannel = "stable" | "beta";
 
 export type ThemePreference = "auto" | "light" | "dark";
 
-export type MenuBarDisplayMode = "minimal" | "compact" | "detailed";
 export type FloatBarOrientation = "horizontal" | "vertical";
 export type ProofProviderId =
   | "codex"
@@ -168,17 +165,12 @@ export interface SettingsSnapshot {
   soundVolume: number;
   highUsageThreshold: number;
   criticalUsageThreshold: number;
-  trayIconMode: TrayIconMode;
-  switcherShowsIcons: boolean;
-  menuBarShowsHighestUsage: boolean;
-  menuBarShowsPercent: boolean;
   showAsUsed: boolean;
   showCreditsExtraUsage: boolean;
   showAllTokenAccountsInMenu: boolean;
   surpriseAnimations: boolean;
   enableAnimations: boolean;
   resetTimeRelative: boolean;
-  menuBarDisplayMode: MenuBarDisplayMode;
   hidePersonalInfo: boolean;
   updateChannel: UpdateChannel;
   autoDownloadUpdates: boolean;
@@ -186,9 +178,6 @@ export interface SettingsSnapshot {
   globalShortcut: string;
   uiLanguage: Language;
   theme: ThemePreference;
-  claudeAvoidKeychainPrompts: boolean;
-  disableKeychainAccess: boolean;
-  showDebugSettings: boolean;
   providerMetrics: Record<string, MetricPreference>;
   floatBarEnabled: boolean;
   /** 30..=100 — clamped server-side. */
@@ -212,17 +201,12 @@ export interface SettingsUpdate {
   soundVolume?: number;
   highUsageThreshold?: number;
   criticalUsageThreshold?: number;
-  trayIconMode?: TrayIconMode;
-  switcherShowsIcons?: boolean;
-  menuBarShowsHighestUsage?: boolean;
-  menuBarShowsPercent?: boolean;
   showAsUsed?: boolean;
   showCreditsExtraUsage?: boolean;
   showAllTokenAccountsInMenu?: boolean;
   surpriseAnimations?: boolean;
   enableAnimations?: boolean;
   resetTimeRelative?: boolean;
-  menuBarDisplayMode?: MenuBarDisplayMode;
   hidePersonalInfo?: boolean;
   updateChannel?: UpdateChannel;
   autoDownloadUpdates?: boolean;
@@ -230,9 +214,6 @@ export interface SettingsUpdate {
   globalShortcut?: string;
   uiLanguage?: Language;
   theme?: ThemePreference;
-  claudeAvoidKeychainPrompts?: boolean;
-  disableKeychainAccess?: boolean;
-  showDebugSettings?: boolean;
   /** Map of provider CLI name → metric preference label. */
   providerMetrics?: Record<string, MetricPreference>;
   floatBarEnabled?: boolean;

@@ -146,7 +146,6 @@ impl LocaleKey {
         (LocaleKey::CookieDeleted, "CookieDeleted"),
         (LocaleKey::RefreshSettings, "RefreshSettings"),
         (LocaleKey::Animations, "Animations"),
-        (LocaleKey::MenuBar, "MenuBar"),
         (LocaleKey::Fun, "Fun"),
         (LocaleKey::GlobalShortcut, "GlobalShortcut"),
         (LocaleKey::Privacy, "Privacy"),
@@ -337,14 +336,6 @@ impl LocaleKey {
             "ProviderClaudeCookiesHelp",
         ),
         (
-            LocaleKey::ProviderClaudeAvoidKeychainPrompts,
-            "ProviderClaudeAvoidKeychainPrompts",
-        ),
-        (
-            LocaleKey::ProviderClaudeAvoidKeychainPromptsHelp,
-            "ProviderClaudeAvoidKeychainPromptsHelp",
-        ),
-        (
             LocaleKey::ProviderCursorCookieSourceHelp,
             "ProviderCursorCookieSourceHelp",
         ),
@@ -493,33 +484,6 @@ impl LocaleKey {
             LocaleKey::NotificationTestSoundPlaying,
             "NotificationTestSoundPlaying",
         ),
-        (LocaleKey::TrayIconModeLabel, "TrayIconModeLabel"),
-        (LocaleKey::TrayIconModeHelper, "TrayIconModeHelper"),
-        (LocaleKey::TrayIconModeSingle, "TrayIconModeSingle"),
-        (
-            LocaleKey::TrayIconModePerProvider,
-            "TrayIconModePerProvider",
-        ),
-        (LocaleKey::ShowProviderIcons, "ShowProviderIcons"),
-        (
-            LocaleKey::ShowProviderIconsHelper,
-            "ShowProviderIconsHelper",
-        ),
-        (LocaleKey::PreferHighestUsage, "PreferHighestUsage"),
-        (
-            LocaleKey::PreferHighestUsageHelper,
-            "PreferHighestUsageHelper",
-        ),
-        (LocaleKey::ShowPercentInTray, "ShowPercentInTray"),
-        (
-            LocaleKey::ShowPercentInTrayHelper,
-            "ShowPercentInTrayHelper",
-        ),
-        (LocaleKey::DisplayModeLabel, "DisplayModeLabel"),
-        (LocaleKey::DisplayModeHelper, "DisplayModeHelper"),
-        (LocaleKey::DisplayModeDetailed, "DisplayModeDetailed"),
-        (LocaleKey::DisplayModeCompact, "DisplayModeCompact"),
-        (LocaleKey::DisplayModeMinimal, "DisplayModeMinimal"),
         (LocaleKey::ShowAsUsedLabel, "ShowAsUsedLabel"),
         (LocaleKey::ShowAsUsedHelper, "ShowAsUsedHelper"),
         (
@@ -543,27 +507,6 @@ impl LocaleKey {
         (
             LocaleKey::UpdateChannelBetaOption,
             "UpdateChannelBetaOption",
-        ),
-        (
-            LocaleKey::AvoidKeychainPromptsLabel,
-            "AvoidKeychainPromptsLabel",
-        ),
-        (
-            LocaleKey::AvoidKeychainPromptsHelper,
-            "AvoidKeychainPromptsHelper",
-        ),
-        (
-            LocaleKey::DisableAllKeychainLabel,
-            "DisableAllKeychainLabel",
-        ),
-        (
-            LocaleKey::DisableAllKeychainHelper,
-            "DisableAllKeychainHelper",
-        ),
-        (LocaleKey::ShowDebugSettingsLabel, "ShowDebugSettingsLabel"),
-        (
-            LocaleKey::ShowDebugSettingsHelper,
-            "ShowDebugSettingsHelper",
         ),
         (LocaleKey::LanguageEnglishOption, "LanguageEnglishOption"),
         (LocaleKey::LanguageChineseOption, "LanguageChineseOption"),

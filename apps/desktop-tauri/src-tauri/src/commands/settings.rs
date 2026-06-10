@@ -16,17 +16,12 @@ pub struct SettingsUpdate {
     pub sound_volume: Option<u8>,
     pub high_usage_threshold: Option<f64>,
     pub critical_usage_threshold: Option<f64>,
-    pub tray_icon_mode: Option<String>,
-    pub switcher_shows_icons: Option<bool>,
-    pub menu_bar_shows_highest_usage: Option<bool>,
-    pub menu_bar_shows_percent: Option<bool>,
     pub show_as_used: Option<bool>,
     pub show_credits_extra_usage: Option<bool>,
     pub show_all_token_accounts_in_menu: Option<bool>,
     pub surprise_animations: Option<bool>,
     pub enable_animations: Option<bool>,
     pub reset_time_relative: Option<bool>,
-    pub menu_bar_display_mode: Option<String>,
     pub hide_personal_info: Option<bool>,
     pub update_channel: Option<String>,
     pub auto_download_updates: Option<bool>,
@@ -34,9 +29,6 @@ pub struct SettingsUpdate {
     pub global_shortcut: Option<String>,
     pub ui_language: Option<String>,
     pub theme: Option<String>,
-    pub claude_avoid_keychain_prompts: Option<bool>,
-    pub disable_keychain_access: Option<bool>,
-    pub show_debug_settings: Option<bool>,
     /// Map of provider CLI name → metric preference label.
     pub provider_metrics: Option<std::collections::HashMap<String, String>>,
     pub float_bar_enabled: Option<bool>,
@@ -83,11 +75,6 @@ impl SettingsUpdate {
         if let Some(v) = self.refresh_interval_secs {
             settings.refresh_interval_secs = v;
         }
-        if let Some(ref s) = self.tray_icon_mode
-            && let Some(mode) = parse_tray_icon_mode(s)
-        {
-            settings.tray_icon_mode = mode;
-        }
         if let Some(v) = self.provider_metrics.clone() {
             apply_provider_metrics(settings, v);
         }
@@ -121,18 +108,6 @@ impl SettingsUpdate {
         }
         if let Some(v) = self.reset_time_relative {
             settings.reset_time_relative = v;
-        }
-        if let Some(v) = self.menu_bar_display_mode.clone() {
-            settings.menu_bar_display_mode = v;
-        }
-        if let Some(v) = self.switcher_shows_icons {
-            settings.switcher_shows_icons = v;
-        }
-        if let Some(v) = self.menu_bar_shows_highest_usage {
-            settings.menu_bar_shows_highest_usage = v;
-        }
-        if let Some(v) = self.menu_bar_shows_percent {
-            settings.menu_bar_shows_percent = v;
         }
         if let Some(v) = self.show_credits_extra_usage {
             settings.show_credits_extra_usage = v;
@@ -185,18 +160,6 @@ impl SettingsUpdate {
         if let Some(v) = self.install_updates_on_quit {
             settings.install_updates_on_quit = v;
         }
-        if let Some(v) = self.claude_avoid_keychain_prompts {
-            settings.set_claude_avoid_keychain_prompts(v);
-        }
-        if let Some(v) = self.disable_keychain_access {
-            settings.disable_keychain_access = v;
-            if v {
-                settings.set_claude_avoid_keychain_prompts(true);
-            }
-        }
-        if let Some(v) = self.show_debug_settings {
-            settings.show_debug_settings = v;
-        }
         self
     }
 
@@ -231,14 +194,6 @@ fn apply_provider_metrics(
         if let Some(pref) = parse_metric_preference(&label) {
             settings.provider_metrics.insert(provider, pref);
         }
-    }
-}
-
-fn parse_tray_icon_mode(s: &str) -> Option<TrayIconMode> {
-    match s {
-        "single" => Some(TrayIconMode::Single),
-        "perProvider" => Some(TrayIconMode::PerProvider),
-        _ => None,
     }
 }
 

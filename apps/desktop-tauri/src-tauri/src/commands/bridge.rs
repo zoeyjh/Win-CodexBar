@@ -358,17 +358,12 @@ pub struct SettingsSnapshot {
     sound_volume: u8,
     high_usage_threshold: f64,
     critical_usage_threshold: f64,
-    tray_icon_mode: &'static str,
-    switcher_shows_icons: bool,
-    menu_bar_shows_highest_usage: bool,
-    menu_bar_shows_percent: bool,
     show_as_used: bool,
     show_credits_extra_usage: bool,
     show_all_token_accounts_in_menu: bool,
     surprise_animations: bool,
     enable_animations: bool,
     reset_time_relative: bool,
-    menu_bar_display_mode: String,
     hide_personal_info: bool,
     update_channel: &'static str,
     auto_download_updates: bool,
@@ -376,9 +371,6 @@ pub struct SettingsSnapshot {
     global_shortcut: String,
     ui_language: &'static str,
     theme: &'static str,
-    claude_avoid_keychain_prompts: bool,
-    disable_keychain_access: bool,
-    show_debug_settings: bool,
     provider_metrics: std::collections::HashMap<String, &'static str>,
     float_bar_enabled: bool,
     float_bar_opacity: u8,
@@ -412,8 +404,6 @@ pub fn get_settings_snapshot() -> SettingsSnapshot {
 
 impl From<Settings> for SettingsSnapshot {
     fn from(settings: Settings) -> Self {
-        let avoid_keychain_prompts = settings.claude_avoid_keychain_prompts();
-
         let mut enabled_providers = settings.enabled_providers.into_iter().collect::<Vec<_>>();
         enabled_providers.sort();
 
@@ -433,17 +423,12 @@ impl From<Settings> for SettingsSnapshot {
             sound_volume: settings.sound_volume,
             high_usage_threshold: settings.high_usage_threshold,
             critical_usage_threshold: settings.critical_usage_threshold,
-            tray_icon_mode: tray_icon_mode_label(settings.tray_icon_mode),
-            switcher_shows_icons: settings.switcher_shows_icons,
-            menu_bar_shows_highest_usage: settings.menu_bar_shows_highest_usage,
-            menu_bar_shows_percent: settings.menu_bar_shows_percent,
             show_as_used: settings.show_as_used,
             show_credits_extra_usage: settings.show_credits_extra_usage,
             show_all_token_accounts_in_menu: settings.show_all_token_accounts_in_menu,
             surprise_animations: settings.surprise_animations,
             enable_animations: settings.enable_animations,
             reset_time_relative: settings.reset_time_relative,
-            menu_bar_display_mode: settings.menu_bar_display_mode,
             hide_personal_info: settings.hide_personal_info,
             update_channel: update_channel_label(settings.update_channel),
             auto_download_updates: settings.auto_download_updates,
@@ -451,9 +436,6 @@ impl From<Settings> for SettingsSnapshot {
             global_shortcut: settings.global_shortcut,
             ui_language: language_label(settings.ui_language),
             theme: theme_label(settings.theme),
-            claude_avoid_keychain_prompts: avoid_keychain_prompts,
-            disable_keychain_access: settings.disable_keychain_access,
-            show_debug_settings: settings.show_debug_settings,
             provider_metrics,
             float_bar_enabled: settings.float_bar_enabled,
             float_bar_opacity: settings.float_bar_opacity,
@@ -829,13 +811,6 @@ pub(crate) fn bridge_events() -> Vec<BridgeEventDescriptor> {
             description: "Emitted when the persisted UI language changes. Payload: serialized language label.",
         },
     ]
-}
-
-fn tray_icon_mode_label(mode: TrayIconMode) -> &'static str {
-    match mode {
-        TrayIconMode::Single => "single",
-        TrayIconMode::PerProvider => "perProvider",
-    }
 }
 
 pub(super) fn update_channel_label(channel: UpdateChannel) -> &'static str {

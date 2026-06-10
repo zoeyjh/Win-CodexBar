@@ -114,7 +114,6 @@ impl LocaleKey {
             // Advanced tab
             LocaleKey::RefreshSettings => "Refresh",
             LocaleKey::Animations => "Animations",
-            LocaleKey::MenuBar => "Menu Bar",
             LocaleKey::Fun => "Fun",
             LocaleKey::GlobalShortcut => "Global Shortcut",
             LocaleKey::Privacy => "Privacy",
@@ -324,10 +323,6 @@ impl LocaleKey {
             LocaleKey::ProviderClaudeCookiesHelp => {
                 "Browser cookies/sessionKey are preferred because they match Claude's settings usage page."
             }
-            LocaleKey::ProviderClaudeAvoidKeychainPrompts => "Avoid Keychain prompts",
-            LocaleKey::ProviderClaudeAvoidKeychainPromptsHelp => {
-                "Use /usr/bin/security to read Claude credentials and avoid CodexBar keychain prompts."
-            }
             LocaleKey::ProviderCursorCookieSourceHelp => {
                 "Automatic imports browser cookies or stored sessions."
             }
@@ -469,27 +464,6 @@ impl LocaleKey {
             LocaleKey::NotificationTestSoundPlaying => "Playing…",
 
             // Tauri desktop shell — Display tab fields
-            LocaleKey::TrayIconModeLabel => "Tray icon mode",
-            LocaleKey::TrayIconModeHelper => {
-                "Single unified icon or one icon per enabled provider."
-            }
-            LocaleKey::TrayIconModeSingle => "Single",
-            LocaleKey::TrayIconModePerProvider => "Per provider",
-            LocaleKey::ShowProviderIcons => "Show provider icons",
-            LocaleKey::ShowProviderIconsHelper => "Display provider icons in the tray switcher.",
-            LocaleKey::PreferHighestUsage => "Prefer highest usage",
-            LocaleKey::PreferHighestUsageHelper => {
-                "Show the provider closest to its limit in the merged tray display."
-            }
-            LocaleKey::ShowPercentInTray => "Show percent in tray",
-            LocaleKey::ShowPercentInTrayHelper => {
-                "Replace usage bar with provider branding + percentage text."
-            }
-            LocaleKey::DisplayModeLabel => "Display mode",
-            LocaleKey::DisplayModeHelper => "Level of detail shown in the menu bar label.",
-            LocaleKey::DisplayModeDetailed => "Detailed",
-            LocaleKey::DisplayModeCompact => "Compact",
-            LocaleKey::DisplayModeMinimal => "Minimal",
             LocaleKey::ShowAsUsedLabel => "Show as used",
             LocaleKey::ShowAsUsedHelper => "Display usage bars as consumed rather than remaining.",
             LocaleKey::ShowAllTokenAccountsLabel => "Show all token accounts",
@@ -503,18 +477,6 @@ impl LocaleKey {
             // Tauri desktop shell — Advanced tab fields
             LocaleKey::UpdateChannelStableOption => "Stable",
             LocaleKey::UpdateChannelBetaOption => "Beta",
-            LocaleKey::AvoidKeychainPromptsLabel => "Avoid keychain prompts (Claude)",
-            LocaleKey::AvoidKeychainPromptsHelper => {
-                "Skip keychain credential reads for Claude to prevent OS permission dialogs."
-            }
-            LocaleKey::DisableAllKeychainLabel => "Disable all keychain access",
-            LocaleKey::DisableAllKeychainHelper => {
-                "Turn off credential/keychain reads for all providers. Also enables the Claude option above."
-            }
-            LocaleKey::ShowDebugSettingsLabel => "Show debug settings",
-            LocaleKey::ShowDebugSettingsHelper => {
-                "Reveal troubleshooting and developer surfaces in the UI."
-            }
             LocaleKey::LanguageEnglishOption => "English",
             LocaleKey::LanguageChineseOption => "中文",
 

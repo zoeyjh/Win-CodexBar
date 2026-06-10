@@ -34,7 +34,6 @@ import { GeminiCliCreds } from "./sections/credentials/GeminiCliCreds";
 import { VertexAiCreds } from "./sections/credentials/VertexAiCreds";
 import { JetBrainsCreds } from "./sections/credentials/JetBrainsCreds";
 import { KiroCreds } from "./sections/credentials/KiroCreds";
-import { ClaudeCreds } from "./sections/credentials/ClaudeCreds";
 import { OpenAiExtras } from "./sections/credentials/OpenAiExtras";
 import { TokenAccountsPanel } from "../tokens/TokenAccountsPanel";
 import { ApiKeySection } from "./ApiKeySection";
@@ -483,8 +482,6 @@ function CredentialsDispatcher({
       return <JetBrainsCreds t={t} />;
     case "kiro":
       return <KiroCreds t={t} />;
-    case "claude":
-      return <ClaudeCreds t={t} />;
     case "codex":
       return <OpenAiExtras providerId={providerId} t={t} />;
     case "openaiapi":

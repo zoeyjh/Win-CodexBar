@@ -63,22 +63,6 @@ pub struct Settings {
     /// Merge mode: show all enabled providers in a single tray icon
     pub merge_tray_icons: bool,
 
-    /// Tray icon display mode: single icon or per-provider icons
-    #[serde(default)]
-    pub tray_icon_mode: TrayIconMode,
-
-    /// Show provider icons in the merged switcher UI
-    #[serde(default = "default_true")]
-    pub switcher_shows_icons: bool,
-
-    /// Prefer the provider closest to its limit in merged menu bar display
-    #[serde(default)]
-    pub menu_bar_shows_highest_usage: bool,
-
-    /// Replace bar-only tray display with provider branding plus percent text where supported
-    #[serde(default)]
-    pub menu_bar_shows_percent: bool,
-
     /// Show usage bars as "used" (true) or "remaining" (false)
     pub show_as_used: bool,
 
@@ -90,9 +74,6 @@ pub struct Settings {
 
     /// Show reset times as relative (e.g., "2h 30m" instead of "3:00 PM")
     pub reset_time_relative: bool,
-
-    /// Menu bar display mode: "minimal", "compact", or "detailed"
-    pub menu_bar_display_mode: String,
 
     /// Show credits and extra usage information in the UI
     pub show_credits_extra_usage: bool,
@@ -106,14 +87,6 @@ pub struct Settings {
     /// fields; legacy `settings.json` files are migrated via [`RawSettings`].
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub provider_configs: HashMap<ProviderId, ProviderConfig>,
-
-    /// Show debug-oriented settings and troubleshooting surfaces
-    #[serde(default)]
-    pub show_debug_settings: bool,
-
-    /// Disable credential/keychain-style reads where supported
-    #[serde(default)]
-    pub disable_keychain_access: bool,
 
     /// Hide personal info (emails, account names) for streaming/sharing
     pub hide_personal_info: bool,
@@ -211,10 +184,6 @@ fn default_global_shortcut() -> String {
     "Ctrl+Shift+U".to_string()
 }
 
-fn default_true() -> bool {
-    true
-}
-
 /// Default cookie source value for browser-authenticated providers.
 ///
 /// Browser cookie extraction reads browser profile databases and decrypts
@@ -251,20 +220,13 @@ impl Default for Settings {
             high_usage_threshold: 70.0,
             critical_usage_threshold: 90.0,
             merge_tray_icons: false, // Show single provider by default
-            tray_icon_mode: TrayIconMode::default(), // Single icon by default
-            switcher_shows_icons: true,
-            menu_bar_shows_highest_usage: false,
-            menu_bar_shows_percent: false,
             show_as_used: true,         // Show as "used" by default
             surprise_animations: false, // Off by default
             enable_animations: true,    // Animations enabled by default
             reset_time_relative: true,  // Show relative times by default
-            menu_bar_display_mode: "detailed".to_string(), // Detailed mode by default
             show_credits_extra_usage: true, // Show credits + extra usage by default
             show_all_token_accounts_in_menu: false,
             provider_configs: HashMap::new(),
-            show_debug_settings: false,
-            disable_keychain_access: false,
             hide_personal_info: false, // Show personal info by default
             update_channel: UpdateChannel::default(), // Stable by default
             provider_metrics: HashMap::new(), // Empty = use Automatic for all
@@ -578,18 +540,6 @@ impl Settings {
         self.provider_config_mut(id).historical_tracking = value;
     }
 
-    /// Per-provider "avoid keychain prompts" toggle (currently claude-only).
-    pub fn avoid_keychain_prompts(&self, id: ProviderId) -> bool {
-        self.provider_configs
-            .get(&id)
-            .map(|c| c.avoid_keychain_prompts)
-            .unwrap_or(false)
-    }
-
-    pub fn set_avoid_keychain_prompts(&mut self, id: ProviderId, value: bool) {
-        self.provider_config_mut(id).avoid_keychain_prompts = value;
-    }
-
     // ── Legacy field-name aliases ────────────────────────────────────
     //
     // Keep the names of the old flat per-provider fields available as
@@ -634,11 +584,5 @@ impl Settings {
     }
     pub fn set_codex_historical_tracking(&mut self, v: bool) {
         self.set_historical_tracking(ProviderId::Codex, v)
-    }
-    pub fn claude_avoid_keychain_prompts(&self) -> bool {
-        self.avoid_keychain_prompts(ProviderId::Claude)
-    }
-    pub fn set_claude_avoid_keychain_prompts(&mut self, v: bool) {
-        self.set_avoid_keychain_prompts(ProviderId::Claude, v)
     }
 }
