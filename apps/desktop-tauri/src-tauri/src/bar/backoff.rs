@@ -49,3 +49,12 @@ pub fn rate_limit_backoff() -> BackoffPolicy {
 pub fn server_error_backoff(base_poll_interval: Duration) -> BackoffPolicy {
     BackoffPolicy::new(base_poll_interval, Duration::from_secs(10 * 60), 2.0, 0.2)
 }
+
+pub fn auth_expired_backoff() -> BackoffPolicy {
+    BackoffPolicy::new(
+        Duration::from_secs(60),
+        Duration::from_secs(15 * 60),
+        2.0,
+        0.2,
+    )
+}

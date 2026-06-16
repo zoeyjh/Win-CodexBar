@@ -132,6 +132,7 @@ struct ProviderFetchEnvelope {
 struct ProviderPollerState {
     rate_limit_backoff: crate::bar::backoff::BackoffPolicy,
     server_error_backoff: crate::bar::backoff::BackoffPolicy,
+    auth_expired_backoff: crate::bar::backoff::BackoffPolicy,
     base_interval: Duration,
 }
 
@@ -140,6 +141,7 @@ impl ProviderPollerState {
         Self {
             rate_limit_backoff: crate::bar::backoff::rate_limit_backoff(),
             server_error_backoff: crate::bar::backoff::server_error_backoff(base_interval),
+            auth_expired_backoff: crate::bar::backoff::auth_expired_backoff(),
             base_interval,
         }
     }
@@ -151,17 +153,18 @@ impl ProviderPollerState {
         }
     }
 
-    fn next_delay(&mut self, status: UsagePollStatus) -> Option<Duration> {
+    fn next_delay(&mut self, status: UsagePollStatus) -> Duration {
         match status {
             UsagePollStatus::Ok => {
                 self.rate_limit_backoff.reset();
                 self.server_error_backoff.reset();
-                Some(self.base_interval)
+                self.auth_expired_backoff.reset();
+                self.base_interval
             }
-            UsagePollStatus::RateLimited => Some(self.rate_limit_backoff.next_delay()),
-            UsagePollStatus::Network => Some(self.server_error_backoff.next_delay()),
-            UsagePollStatus::Unknown => Some(self.base_interval),
-            UsagePollStatus::AuthExpired => None,
+            UsagePollStatus::RateLimited => self.rate_limit_backoff.next_delay(),
+            UsagePollStatus::Network => self.server_error_backoff.next_delay(),
+            UsagePollStatus::Unknown => self.base_interval,
+            UsagePollStatus::AuthExpired => self.auth_expired_backoff.next_delay(),
         }
     }
 }
@@ -214,13 +217,7 @@ async fn provider_poll_loop(app: tauri::AppHandle, id: ProviderId) {
             tracing::warn!(%error, provider = id.cli_name(), "failed to update tray after provider poll");
         }
 
-        let Some(delay) = poller.next_delay(status) else {
-            tracing::warn!(
-                provider = id.cli_name(),
-                "stopping automatic polling after auth-expired response"
-            );
-            break;
-        };
+        let delay = poller.next_delay(status);
         tokio::time::sleep(delay).await;
     }
 }
@@ -549,4 +546,50 @@ pub fn get_cached_providers(
         .lock()
         .map(|guard| guard.provider_cache.clone())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod poller_tests {
+    use super::*;
+
+    // 인증 만료가 반복돼도 폴러는 멈추지 않고(반환 타입이 Duration), 지연은
+    // 상한(15분) + 지터(+20%) 한도 안에서 점점 커져 상한 부근까지 도달한다.
+    #[test]
+    fn auth_expired_keeps_polling_with_capped_backoff() {
+        let mut poller = ProviderPollerState::new(Duration::from_secs(60));
+        let mut last = Duration::ZERO;
+        for _ in 0..8 {
+            last = poller.next_delay(UsagePollStatus::AuthExpired);
+            assert!(last > Duration::ZERO);
+            // 상한 900초 * (1 + 0.2 지터) = 1080초를 넘지 않는다.
+            assert!(
+                last <= Duration::from_secs(1080),
+                "delay {last:?} exceeds cap+jitter"
+            );
+        }
+        // 충분히 반복하면 상한(900초) - 20% 지터 = 720초 이상에 도달한다.
+        assert!(
+            last >= Duration::from_secs(720),
+            "delay {last:?} did not approach cap"
+        );
+    }
+
+    // Ok 응답을 받으면 인증 만료 백오프가 리셋되어 다음 인증 만료 지연이
+    // 다시 첫 시도 범위(60초 ± 20%)로 돌아온다.
+    #[test]
+    fn ok_resets_auth_expired_backoff() {
+        let mut poller = ProviderPollerState::new(Duration::from_secs(60));
+        for _ in 0..6 {
+            poller.next_delay(UsagePollStatus::AuthExpired);
+        }
+
+        let after_ok = poller.next_delay(UsagePollStatus::Ok);
+        assert_eq!(after_ok, Duration::from_secs(60));
+
+        let after_reset = poller.next_delay(UsagePollStatus::AuthExpired);
+        assert!(
+            after_reset >= Duration::from_secs(48) && after_reset <= Duration::from_secs(72),
+            "delay {after_reset:?} not in first-attempt range"
+        );
+    }
 }
